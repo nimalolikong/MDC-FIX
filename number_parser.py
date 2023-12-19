@@ -7,7 +7,7 @@ import typing
 G_spat = re.compile(
     "^\w+\.(cc|com|net|me|club|jp|tv|xyz|biz|wiki|info|tw|us|de)@|^22-sht\.me|"
     "^(fhd|hd|sd|1080p|720p|4K)(-|_)|"
-    "(-|_)(fhd|hd|sd|1080p|720p|4K|x264|x265|uncensored|hack|leak)",
+    "(-|_|\.)(fhd|hd|sd|1080p|720p|4K|x264|x265|uncensored|hack|leak|chs|cht)",#添加对.chs,cht支持
     re.IGNORECASE)
 
 
@@ -91,7 +91,14 @@ def get_number(debug: bool, file_path: str) -> str:
                 new_file_number = file_number[:-2]
 
             return new_file_number.upper()
-        else:  # 提取不含减号-的番号，FANZA CID
+        else:  # 提取不含减号-的番号，FANZA CID,动画名
+            #匹配去掉所有括号的结果
+
+            lifan = re.sub(r'\[.*?\]','',file_path)
+            lifan = lifan.replace('.chs','').replace('.cht','') 
+            lifan = os.path.splitext(lifan)[0]
+            return lifan#返回去除所有括号内内容的结果
+            '''    暂不匹配欧美番号
             # 欧美番号匹配规则
             oumei = re.search(r'[a-zA-Z]+\.\d{2}\.\d{2}\.\d{2}', filepath)
             if oumei:
@@ -103,6 +110,7 @@ def get_number(debug: bool, file_path: str) -> str:
                     "['']").replace('_', '-')
             except:
                 return str(re.search(r'(.+?)\.', filepath)[0])
+            '''
     except Exception as e:
         if debug:
             print(f'[-]Number Parser exception: {e} [{file_path}]')

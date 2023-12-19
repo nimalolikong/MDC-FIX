@@ -350,11 +350,8 @@ def print_files(path, leak_word, c_word, naming_rule, anime_naming_rule, part, c
         json_data)
     if config.getInstance().main_mode() == 3:  # 模式3下，由于视频文件不做任何改变，.nfo文件必须和视频文件名称除后缀外完全一致，KODI等软件方可支持
         nfo_path = str(Path(filepath).with_suffix('.nfo'))
-    else:
-        if animeflag:
-            nfo_path = os.path.join(path, f"{title}{part}{leak_word}{c_word}{hack_word}.nfo")
-        else:
-            nfo_path = os.path.join(path, f"{number}{part}{leak_word}{c_word}{hack_word}.nfo")
+    else:#对动画来讲number就是标题名（如果可以搜索的话）
+        nfo_path = os.path.join(path, f"{number}{part}{leak_word}{c_word}{hack_word}.nfo")
     try:
         if not os.path.exists(path):
             try:

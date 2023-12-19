@@ -17,13 +17,17 @@ from ADC_function import (translate,
                           )
 from scrapinglib.api import search
 
-def getRightNumber(number):
+def getRightNumber(number,isanime=False):
+    if isanime:
+        return number
     num = number.upper()
     if '-' in num:
         return num
     index = 0
     while num[index].isdigit():
         index += 1 
+    if index >= len(number):
+        return number
     head = index    
     while num[index].isdigit() == False:
              index = index + 1
@@ -95,7 +99,7 @@ def get_data_from_json(
                         morestoryline=conf.is_storyline(),
                         specifiedSource=specified_source, specifiedUrl=specified_url,
                         debug = conf.debug())
-    #将fanza_number修改为常规number
+    
 
     # Return if data not found in all sources
     if not json_data:
@@ -186,6 +190,7 @@ def get_data_from_json(
     #直接将number整理成标准格式（不适用于里番，需要另行搜索请自行修改成可搜索格式
     if json_data['animeflag'] == False:
         json_data['number'] = getRightNumber(number)
+    
 
     # 返回处理后的json_data
     json_data['title'] = title

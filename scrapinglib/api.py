@@ -213,8 +213,9 @@ class Scraping:
                 sources = ["getchu"]
             elif "rj" in lo_file_number or "vj" in lo_file_number:
                 sources = ["dlsite"]
-            elif re.search(r"[\u3040-\u309F\u30A0-\u30FF]+", file_number):
-                sources = ["dlsite", "getchu"]
+             #直接用fanza刮削效果最好   
+           # elif re.search(r"[\u3040-\u309F\u30A0-\u30FF]+", file_number):
+            #    sources = ["dlsite", "getchu"]
             elif "pcolle" in sources and "pcolle" in lo_file_number:
                 sources = ["pcolle"]
             elif "fc2" in lo_file_number:
