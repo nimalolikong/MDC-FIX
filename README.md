@@ -1,7 +1,7 @@
 <h1 align="center">MDC(源码修改自用版)</h1>
 
-![](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat)
-![](https://img.shields.io/badge/Python-3.8-yellow.svg?style=flat&logo=python)`<br>`
+![img](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat)
+![img](https://img.shields.io/badge/Python-3.8-yellow.svg?style=flat&logo=python) ![Static Badge](https://img.shields.io/badge/GPL-3.0%20license-gray)
 
 # 开始之前
 
@@ -15,7 +15,7 @@
 
 # **简单使用方法**
 
-使用vscode运行源码，请下载好requiments.txt依赖，并将目标文件和目标文件夹地址添加到config.ini文件中，在Movie_Data_Capture.py文件运行整个项目，其他参考下面[AV_Data_Capture](https://github.com/YEreed/AV_Data_Capture)的使用文档
+使用vscode运行源码，请下载好requiments.txt依赖，并将目标文件和目标文件夹地址添加到config.ini文件中，在Movie_Data_Capture.py文件运行整个项目，其他参考下面[AV_Data_Capture](https://github.com/YEreed/AV_Data_Capture)的使用文档，使用效果就不放上来了，有兴趣自己试试
 
 # 改进
 
