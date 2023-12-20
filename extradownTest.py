@@ -104,7 +104,7 @@ def findPreviewImagesFromJAVStore(number):
     url = f'https://javstore.net/search/{number}.html'
     p_html = get_html(url, header=headers)
     if p_html.status_code != 200:
-        print("加载javstore搜索页面出错")
+        print("[!]加载javstore搜索页面出错")
         return ""
     data = etree.HTML(p_html.text)
     node = data.xpath('/html/body/div[1]/div[2]/div[1]/div[3]/div')

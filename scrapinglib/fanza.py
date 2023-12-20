@@ -25,10 +25,10 @@ class Fanza(Parser):
 
     def search(self, number):
         if 'OVA'in number or re.search(r"[\u3040-\u309F\u30A0-\u30FF]+", number):
-            print('是动画名，开始在Fanza搜索')
+            print('[+]是动画名，开始在Fanza搜索')
             self.animeflag = True
         else:
-            print('是电影名，开始在Fanza搜索')
+            print('[+]是电影名，开始在Fanza搜索')
         
         self.number = number
         self.outnumber = number
@@ -79,22 +79,28 @@ class Fanza(Parser):
         放到一个list中，再进行判断
         '''
         url = 'https://www.dmm.co.jp/search/=/searchstr='+search_number + '/limit=30/sort=date/'
-        print('搜索页面url'+url)
+        print('[+]搜索页面URL：'+url)
         '''
         这里f_number特指av番号形式，如果是动画不会影响搜索结果
         '''
         f_number = number
         if self.animeflag :
-          print(f'动画标题名{f_number}')
+          print(f'[+]动画标题名{f_number}')
         else:
             f_number = number.replace('-','').lower()
-            print(f'fanza小写番号是 {f_number}')
+            print(f'[+]Fanza小写番号是 {f_number}')
         search_htmlcode = self.getHtml(url)
         
         if search_htmlcode != 404 and f_number in search_htmlcode:
+            temp_num = number
             s_etree = etree.HTML(search_htmlcode)
             true_url_list = s_etree.xpath('//*[@class="tmb"]/a/@href')
+            title_list = s_etree.xpath('//*[@class="tmb"]/a/span[2]/text()')
             url_count = len(true_url_list)
+            if len(title_list)== url_count:
+                print('[+]商品标题名和URL个数对应')
+            else:
+                print('[!]标题名个数和URL个数不匹配！请检查代码！')
             print(f'[+]在Fanza搜到了{url_count}个结果')   
             if url_count != 0:
                 if self.animeflag:
@@ -102,13 +108,22 @@ class Fanza(Parser):
                     index = url_count 
                     while index > 0:#倒序循环(才知道python实现倒序循环就是依托还是用倒序实现的，-jh  20231220)
                        index -= 1
-                       if 'anime' in true_url_list[index]: 
-                            print(f'成功得到页面url:  {true_url_list[index]}')
-                            return true_url_list[index]
-                    return true_url_list[0]#最后都没有返回第一个
+                       
+                       url = true_url_list[index]
+                       print('[+]'+url)
+                       
+                       title = title_list[index]
+                       print('[+]'+title)
+                       if 'anime' in url and temp_num.replace('OVA','').strip() in title: 
+                            print(f'[+]成功得到页面url:  {url}')
+                            return url
+                    url = true_url_list[0]
+                    print(f'[!]未找到匹配标题名商品，默认返回第一个URL{url}')
+                    return url#最后都没有返回第一个
                 else:
-                    print('[+]是电影,将直接返回第一个结果')
-                    return true_url_list[0]
+                    url = true_url_list[0]
+                    print(f'[+]是电影,将直接返回第一个URL{url}')
+                    return url
             else:    
                 print('[!]未查询到商品结果，请查看刮削名是否正确，或者直接重命名文件')          
         return 404
@@ -123,7 +138,7 @@ class Fanza(Parser):
         默认使用http代理，如果开启其他代理请自行修改源码
         '''
         proxy = self.proxies['http'].replace('http://','')
-        print('selenuim 代理已经连通，地址：'+proxy)
+        print('[+]Selenuim 代理已经连通，地址：'+proxy)
         options.add_argument(('--proxy-server=' + proxy))
         '''
         有时会反复进行ssl连接,请查看是否开启了全局连接
@@ -196,11 +211,11 @@ class Fanza(Parser):
 
     def getRelease(self, htmltree):
         result = ''
-        if 'dvd' in self.detailurl:
+        if 'dvd' in self.detailurl or 'anime' in self.detailurl:
             result = self.getFanzaString('発売日：')
-        if 'rental' in self.detailurl:
+        elif 'rental' in self.detailurl:
             result = self.getFanzaString('貸出開始日：')
-        if result == '' or result == '----':
+        elif result == '' or result == '----':
             result = self.getFanzaString('配信開始日：')
         return result.replace("/", "-").strip('\\n')
 
@@ -283,4 +298,5 @@ class Fanza(Parser):
             return ''
         
         title= str(re.sub("\【.*?\】","",result[0]))
-        return title
+        
+        return title.replace('セル版','').strip()

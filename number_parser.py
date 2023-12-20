@@ -97,7 +97,7 @@ def get_number(debug: bool, file_path: str) -> str:
             lifan = re.sub(r'\[.*?\]','',file_path)
             lifan = lifan.replace('.chs','').replace('.cht','') 
             lifan = os.path.splitext(lifan)[0]
-            return lifan#返回去除所有括号内内容的结果
+            return lifan.strip() #返回去除所有括号内内容的结果
             '''    暂不匹配欧美番号
             # 欧美番号匹配规则
             oumei = re.search(r'[a-zA-Z]+\.\d{2}\.\d{2}\.\d{2}', filepath)
