@@ -3,7 +3,7 @@ import json
 import secrets
 import typing
 from pathlib import Path
-
+import re
 # third party lib
 import opencc
 from lxml import etree

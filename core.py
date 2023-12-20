@@ -230,7 +230,7 @@ def extrafanart_download(data, path, number, filepath, json_data=None, animeflag
       for p_url in previewImageUrlList:
           if p_url != "":
             data.append(p_url)
-      print("添加preimage url成功! ")
+      print("[+]添加Preview Image Url成功! ")
     #### 添加结束       
     
     if config.getInstance().extrafanart_thread_pool_download():
@@ -1138,7 +1138,7 @@ def findPreviewImagesFromBlogJAV(number):
     url= 'https://blogJAV.net/?s='+bid
     bJAV_search_html = get_html(url,return_type='object')
     if bJAV_search_html.status_code != 200:
-        print("blogjav页面错误")
+        print("[!]blogjav页面错误")
         return None
     data = etree.HTML(bJAV_search_html.text)
     dlist = data.findall('.//*[@class="entry-title"]')
@@ -1159,30 +1159,29 @@ def getPreviewImageUrlFromBlogJAV(url):
     
     p_html = get_html(url,json_headers= pic_headers,return_type="object")
     if p_html.status_code != 200:
-       print("无法加载blogJAV页面")
+       print("[!]无法加载blogJAV页面")
        return ""
     data = etree.HTML(p_html.text)
     image_list = data.xpath('/html/body/div[1]/div/div[1]/main/article/div/div/p[1]/a/img/@data-lazy-src')
     if len(image_list) == 0:
-        print("未找到blogjav对应位置缩略图，请查看代码")
+        print("[!]未找到blogjav对应位置缩略图，请查看代码")
         return ""
     targetImageUrl = image_list[0].replace('thumbs', 'images').replace('/t', '/img')
     return targetImageUrl
 def findPreviewImagesFromJAVStore(number):
-    print(number)
     url = f'https://javstore.net/search/{number}.html'
     p_html = get_html(url,return_type="object")
     if p_html.status_code != 200:
-        print("加载javstore搜索页面出错")
+        print("[!]加载javstore搜索页面出错")
         return ""
     data = etree.HTML(p_html.text)
     node = data.xpath('/html/body/div[1]/div[2]/div[1]/div[3]/div')
     if len(node) == 0:
-        print('未查找到番号相关信息')
+        print('[!]未查找到番号相关信息')
         return ""
     dlist = node[0].xpath('.//h3/span')
     if len(dlist) == 0:
-        print("未找到javstore搜索元素")
+        print("[!]未找到javstore搜索元素")
         return ""
     p_url = ""
     cnt = 0
@@ -1204,7 +1203,7 @@ def getPreviewImageUrlFromBlogJAV(url):
     
     p_html = get_html(url,json_headers= pic_headers, return_type="object")
     if p_html.status_code != 200:
-       print("无法加载blogJAV页面")
+       print("[!]无法加载blogJAV页面")
        return ""
 
     data = etree.HTML(p_html.text)
@@ -1216,12 +1215,12 @@ def getPreviewImageUrlFromBlogJAV(url):
 def getPreviewImageUrlFromJAVStore(url):
     i_html = get_html(url,json_headers= pic_headers, return_type="object")
     if i_html.status_code != 200:
-        print("无法加载javstore页面")
+        print("[!]无法加载javstore页面")
     i_url = ""
     data = etree.HTML(i_html.text)
     image_url = data.xpath('/html/body/div[1]/div[2]/div[1]/div[2]/div[2]/a[1]/@href')
     if len(image_url) ==0 :
-        print("未找到javstore图片")
+        print("[!]未找到javstore图片")
         return i_url
     i_url = image_url[0]
     return i_url
@@ -1241,7 +1240,7 @@ def imageUrlFromJAVStore(number):
 
 def multiThreadToGetUrl(number):
     with ThreadPoolExecutor(max_workers=2) as t:
-        print("start get preImage")
+        print("[+]开始获取Preview Image Url...")
         obj_list = []
         obj1 = t.submit(imageUrlFromBlogJAV, number)
         obj_list.append(obj1)
@@ -1253,19 +1252,19 @@ def multiThreadToGetUrl(number):
             if url != "":
                 url_list.append(url)
         for url in url_list:
-            print("Get Preview Image! url is " +url)
+            print("[+]Get Preview Image Url! url is " +url)
         return url_list
 def toGetPreImgUrl(number):
-    print("开始获取preImg")
+    print("[+]开始获取Preview Image Url...")
     ans = []
     u1 = imageUrlFromBlogJAV(number)
     if u1 != "":
         ans.append(u1)
-        print("成功获取BlogJav")
+        print("[+]成功获取BlogJav的预览大图! 已添加到extrafanart下载列表")
     u2 = imageUrlFromJAVStore(number)
     if u2 != "":
         ans.append(u2)
-        print("成功获取javstore")
+        print("[+]成功获取JAVStore的预览大图! 已添加到extrafanart下载列表")
     return ans         
 
     

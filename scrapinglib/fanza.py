@@ -19,13 +19,17 @@ class Fanza(Parser):
     expr_extrafanart = '//a[@name="sample-image"]/img/@src'
     expr_outline = "//div[@class='mg-b20 lh4']/text()"
     expr_outline2 = "//div[@class='mg-b20 lh4']//p/text()"
+    expr_outline3 = "//div[@class='clear mg-b20 lh4']//p/text()"
     expr_outline_og = '//head/meta[@property="og:description"]/@content'
     expr_runtime = "//td[contains(text(),'収録時間')]/following-sibling::td/text()"
 
     def search(self, number):
         if 'OVA'in number or re.search(r"[\u3040-\u309F\u30A0-\u30FF]+", number):
-            print('是动画名，开始在fanza搜索')
+            print('是动画名，开始在Fanza搜索')
             self.animeflag = True
+        else:
+            print('是电影名，开始在Fanza搜索')
+        
         self.number = number
         self.outnumber = number
         if self.specifiedUrl:
@@ -91,20 +95,22 @@ class Fanza(Parser):
             s_etree = etree.HTML(search_htmlcode)
             true_url_list = s_etree.xpath('//*[@class="tmb"]/a/@href')
             url_count = len(true_url_list)
-            print(f'在Fanza搜索到了{url_count}个结果，将最后开始寻找最后包含anime的url')
+            print(f'[+]在Fanza搜到了{url_count}个结果')   
             if url_count != 0:
-                index = url_count 
-                while index > 0:#倒序循环(才知道python实现倒序循环就是依托还是用倒序实现的，-jh  20231220)
-                   index -= 1
-                   if 'anime' in true_url_list[index]: 
-                        print(f'成功得到页面url:  {true_url_list[index]}')
-                        return true_url_list[index]
-                    
-                                   
-                return true_url_list[0]#最后都没有返回第一个
-                
-            else:
-                print('未能得到商品链接元素')
+                if self.animeflag:
+                    print('[+]是动画,将最后开始寻找最后包含anime关键字的url')
+                    index = url_count 
+                    while index > 0:#倒序循环(才知道python实现倒序循环就是依托还是用倒序实现的，-jh  20231220)
+                       index -= 1
+                       if 'anime' in true_url_list[index]: 
+                            print(f'成功得到页面url:  {true_url_list[index]}')
+                            return true_url_list[index]
+                    return true_url_list[0]#最后都没有返回第一个
+                else:
+                    print('[+]是电影,将直接返回第一个结果')
+                    return true_url_list[0]
+            else:    
+                print('[!]未查询到商品结果，请查看刮削名是否正确，或者直接重命名文件')          
         return 404
     
     def getTrueHtmlFromFanza(self,url):
@@ -162,9 +168,12 @@ class Fanza(Parser):
 
     def getOutline(self, htmltree):
         try:
+            
             result = self.getTreeElement(htmltree, self.expr_outline).replace("\n", "")
             if result == '':
                 result = self.getTreeElement(htmltree, self.expr_outline2).replace("\n", "")
+            if result == '':
+                result = self.getTreeElement(htmltree, self.expr_outline3).replace("\n", "")
             if "※ 配信方法によって収録内容が異なる場合があります。" == result:
                 result = self.getTreeElement(htmltree, self.expr_outline_og)
             return result
@@ -186,7 +195,11 @@ class Fanza(Parser):
         
 
     def getRelease(self, htmltree):
-        result = self.getFanzaString('発売日：')
+        result = ''
+        if 'dvd' in self.detailurl:
+            result = self.getFanzaString('発売日：')
+        if 'rental' in self.detailurl:
+            result = self.getFanzaString('貸出開始日：')
         if result == '' or result == '----':
             result = self.getFanzaString('配信開始日：')
         return result.replace("/", "-").strip('\\n')
@@ -264,3 +277,10 @@ class Fanza(Parser):
             return result1
         result2 = self.htmltree.xpath("//td[contains(text(),'" + string + "')]/following-sibling::td/text()")
         return result2
+    def getTitle(self, htmltree):
+        result = htmltree.xpath(self.expr_title)
+        if len(result) == 0:
+            return ''
+        
+        title= str(re.sub("\【.*?\】","",result[0]))
+        return title
