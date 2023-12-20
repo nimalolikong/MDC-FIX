@@ -133,6 +133,20 @@ class Fanza(Parser):
                         url = true_url_list[0]
                         print(f'[!]未发现anime关键词，默认返回第一个URL：{url}')
                     return url#最后都没有返回第一个
+                elif url_count >= 4:
+                    print('[+]是电影,但是结果过多，可能是电影太老，将最后开始寻找最后包含anime关键字的url')
+                    index = url_count 
+                    result = ''
+                    while index > 0:#倒序循环(才知道python实现倒序循环就是依托还是用倒序实现的，-jh  20231220)
+                       index -= 1
+                       
+                       url = true_url_list[index]
+                       print('[+]'+url)
+                       if f_number in url: 
+                            print('[+]匹配成功，返回最老的符合条件的结果！')
+                            return url     
+                    print('[!]未能匹配到小写番号，返回第一个url')                                                      
+                    return true_url_list[0]    
                 else:
                     url = true_url_list[0]
                     print(f'[+]是电影,将直接返回第一个URL{url}')
