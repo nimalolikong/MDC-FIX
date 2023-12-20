@@ -95,7 +95,7 @@ class Fanza(Parser):
             temp_num = number
             s_etree = etree.HTML(search_htmlcode)
             true_url_list = s_etree.xpath('//*[@class="tmb"]/a/@href')
-            title_list = s_etree.xpath('//*[@class="tmb"]/a/span[2]/text()')
+            title_list = s_etree.xpath('//*[@class="tmb"]/a/span[1]/img/@alt')#span是带省略号的，还有图片标签有简介救大命
             url_count = len(true_url_list)
             if len(title_list)== url_count:
                 print('[+]商品标题名和URL个数对应')
@@ -106,6 +106,7 @@ class Fanza(Parser):
                 if self.animeflag:
                     print('[+]是动画,将最后开始寻找最后包含anime关键字的url')
                     index = url_count 
+                    result = ''
                     while index > 0:#倒序循环(才知道python实现倒序循环就是依托还是用倒序实现的，-jh  20231220)
                        index -= 1
                        
@@ -114,11 +115,23 @@ class Fanza(Parser):
                        
                        title = title_list[index]
                        print('[+]'+title)
-                       if 'anime' in url and temp_num.replace('OVA','').strip() in title: 
-                            print(f'[+]成功得到页面url:  {url}')
-                            return url
-                    url = true_url_list[0]
-                    print(f'[!]未找到匹配标题名商品，默认返回第一个URL{url}')
+                       if 'anime' in url: 
+                            if result == '':
+                               print(f'[+]成功得到页面url,但暂未未匹配到标题名:  {url}')
+                               result = url
+                            print(f'[+]商品标题{title}')
+                            print(f'[+]待匹配标题{temp_num}')
+                            
+                            if temp_num in title:
+                                print(f'[+]已匹配到标题，URL：{url}')
+                                result = url
+                                return result
+                    if result != '':
+                        url = result
+                        print(f'[!]未匹配到标题，返回最后带有anime关键词的URL：{url}')
+                    else:
+                        url = true_url_list[0]
+                        print(f'[!]未发现anime关键词，默认返回第一个URL：{url}')
                     return url#最后都没有返回第一个
                 else:
                     url = true_url_list[0]
@@ -211,12 +224,20 @@ class Fanza(Parser):
 
     def getRelease(self, htmltree):
         result = ''
-        if 'dvd' in self.detailurl or 'anime' in self.detailurl:
+        if 'dvd' in self.detailurl:
             result = self.getFanzaString('発売日：')
         elif 'rental' in self.detailurl:
             result = self.getFanzaString('貸出開始日：')
+        elif 'anime' in self.detailurl:
+            result = self.getFanzaString('発売日：')
+            if result == '' or result == '----':
+               print('[!]未找到発売日，尝试寻找配信開始日')
+               result = self.getFanzaString('配信開始日：')
+               if result == '' or result == '----':
+                   print('[!]未找到配信開始日')
         elif result == '' or result == '----':
             result = self.getFanzaString('配信開始日：')
+            
         return result.replace("/", "-").strip('\\n')
 
     def getTags(self, htmltree):
