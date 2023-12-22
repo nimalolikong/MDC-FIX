@@ -133,8 +133,8 @@ class Fanza(Parser):
                         url = true_url_list[0]
                         print(f'[!]未发现anime关键词，默认返回第一个URL：{url}')
                     return url#最后都没有返回第一个
-                elif url_count >= 4:
-                    print('[+]是电影,但是结果过多，可能是电影太老，将最后开始寻找最后包含anime关键字的url')
+                elif url_count >= 3:
+                    print('[+]是电影,但是结果过多，可能是电影太老，将最后开始寻找最后包含dvd关键字的url')
                     index = url_count 
                     result = ''
                     while index > 0:#倒序循环(才知道python实现倒序循环就是依托还是用倒序实现的，-jh  20231220)
@@ -333,5 +333,8 @@ class Fanza(Parser):
             return ''
         
         title= str(re.sub("\【.*?\】","",result[0]))
-        
+        if "（ブルーレイディスク）" in title:#不想要蓝光标识和后面的内容
+            index = title.find("（")
+            title = title[:index]
+            title.strip()
         return title.replace('セル版','').strip()
