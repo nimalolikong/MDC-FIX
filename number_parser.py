@@ -57,21 +57,27 @@ def get_number(debug: bool, file_path: str) -> str:
             print('[!]初步正则匹配失败！')
         if file_number:
             return file_number
-        elif '字幕组' in filepath or 'SUB' in filepath.upper() or re.match(r'[\u30a0-\u30ff]+', filepath):
-            print(filepath)
-            filepath = G_spat.sub("", filepath)
-            filepath = re.sub("\[.*?\]","",filepath)
-            filepath = filepath.replace(".chs", "").replace(".cht", "")
-            file_number = str(re.findall(r'(.+?)\.', filepath)).strip(" [']")
-            return file_number
+    
+
+
+
+        elif '字幕组' in filepath or 'SUB' in filepath.upper() or 'OVA' in filepath or re.match(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]+', filepath):
+            print('[!]是里番，开始尝试匹配里番')
+            lifan = re.sub(r'\[.*?\]','',file_path)
+            lifan = lifan.replace('.chs','').replace('.cht','') 
+            
+            lifan = os.path.splitext(lifan)[0]
+            print('[+]处理成功！得到标题名是：'+lifan)
+            return lifan.strip() #返回去除所有括号内内容的结果
         elif '-' in filepath or '_' in filepath:  # 普通提取番号 主要处理包含减号-和_的番号
             
             filepath = G_spat.sub("", filepath)
-            
+            print(filepath)
             filename = str(re.sub("\[\d{4}-\d{1,2}-\d{1,2}\] - ", "", filepath))  # 去除文件名中时间
-            
+            print(filename)
             filename = str(re.sub("\[.*?\]","",filepath))#开始阶段删除方括号（方括号中结果一般没有正确结果，如果有那我也没办法）
             filename = os.path.splitext(filename)[0].strip()
+            print(filename)
             atPosition = filename.find('@')
             if atPosition != -1:
                 filename = filename[atPosition + 1:]
@@ -79,10 +85,12 @@ def get_number(debug: bool, file_path: str) -> str:
             if 'fc2' in lower_check:
                 filename = lower_check.replace('--', '-').replace('_', '-').upper()
             filename = re.sub("[-_]cd\d{1,2}", "", filename, flags=re.IGNORECASE)
-
+            print(filename)
             if not re.search("-|_", filename): # 去掉-CD1之后再无-的情况，例如n1012-CD1.wmv
                 num =  re.search(r'\w+', filename[:filename.find('.')], re.A)
                 if num != None:
+                    res = str(num.group())
+                   
                     return str(num.group())
             file_number =  os.path.splitext(filename)
             filename = re.search(r'[\w\-_]+', filename, re.A)
@@ -102,7 +110,7 @@ def get_number(debug: bool, file_path: str) -> str:
                 new_file_number = re.sub("(-|_)uc$", "", file_number, flags=re.IGNORECASE)
             elif re.search("\d+ch$", file_number, flags=re.I):
                 new_file_number = file_number[:-2]
-
+            
             return new_file_number.upper()
         else:  # 提取不含减号-的番号，FANZA CID,动画名
             #匹配去掉所有括号的结果

@@ -293,6 +293,7 @@ class Fanza(Parser):
             return ''
         return ret
 
+
     def getSeries(self, htmltree):
         ret = self.getFanzaString('シリーズ：')
         if ret == "----":
