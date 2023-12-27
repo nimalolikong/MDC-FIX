@@ -20,6 +20,7 @@ class Fanza(Parser):
     expr_outline = "//div[@class='mg-b20 lh4']/text()"
     expr_outline2 = "//div[@class='mg-b20 lh4']//p/text()"
     expr_outline3 = "//div[@class='clear mg-b20 lh4']//p/text()"
+    
     expr_outline_og = '//head/meta[@property="og:description"]/@content'
     expr_runtime = "//td[contains(text(),'収録時間')]/following-sibling::td/text()"
 
@@ -91,7 +92,8 @@ class Fanza(Parser):
             print(f'[+]Fanza小写番号是 {f_number}')
         search_htmlcode = self.getHtml(url)
         
-        if search_htmlcode != 404 and f_number in search_htmlcode:
+        if search_htmlcode != 404:#因为有动画名，直接查找是否有满足条件的搜索结果
+            print('[+]成功获取搜索结果页面！')
             temp_num = number
             s_etree = etree.HTML(search_htmlcode)
             true_url_list = s_etree.xpath('//*[@class="tmb"]/a/@href')
@@ -152,7 +154,8 @@ class Fanza(Parser):
                     print(f'[+]是电影,将直接返回第一个URL{url}')
                     return url
             else:    
-                print('[!]未查询到商品结果，请查看刮削名是否正确，或者直接重命名文件')          
+                print('[!]未查询到商品结果，请查看刮削名是否正确，或者直接重命名文件') 
+                 
         return 404
     
     def getTrueHtmlFromFanza(self,url):
@@ -209,18 +212,43 @@ class Fanza(Parser):
         return self.getFanzaString('メーカー')
 
     def getOutline(self, htmltree):
-        try:
+        #try:
+        flag = 1
+        result = self.getTreeElement(htmltree, self.expr_outline).replace("\n", "")
+        if result == '':
+            result = self.getTreeElement(htmltree, self.expr_outline2).replace("\n", "")
+            flag = 2
+        if result == '':
+            result = self.getTreeElement(htmltree, self.expr_outline3).replace("\n", "")
+            flag = 3
+        if 'STORY' in result:
             
-            result = self.getTreeElement(htmltree, self.expr_outline).replace("\n", "")
-            if result == '':
-                result = self.getTreeElement(htmltree, self.expr_outline2).replace("\n", "")
-            if result == '':
-                result = self.getTreeElement(htmltree, self.expr_outline3).replace("\n", "")
-            if "※ 配信方法によって収録内容が異なる場合があります。" == result:
-                result = self.getTreeElement(htmltree, self.expr_outline_og)
-            return result
-        except:
-            return ''
+            print('[!]有story标签！')#出现了不该出现的story标签，尝试重新处理编码
+            expr = ''
+            if flag == 1:#选择成功处理的表达式
+                expr = self.expr_outline
+            elif flag == 2:
+                expr = self.expr_outline2
+            else:
+                expr = self.expr_outline3
+            expr = expr.replace('/text()','')#去除/text()
+            ans = htmltree.xpath(expr)
+            
+            
+            ans = etree.tostring(ans[0],encoding='unicode')#t手动使用etree.tostring并重编码
+            ans = str(re.sub("<.*?>","",ans))
+            print('[!]处理story标签成功！')
+            result = ans.replace('＜STORY＞', '').strip()
+            if len(result) > 0:
+                print('[!]去除story,并修改编码')  
+            
+        if "※ 配信方法によって収録内容が異なる場合があります。" == result:
+            result = self.getTreeElement(htmltree, self.expr_outline_og)
+        
+        return result
+        #except:
+         #   return ''
+    
 
     def getRuntime(self, htmltree):
         return str(re.search(r'\d+', super().getRuntime(htmltree)).group()).strip(" ['']")
@@ -255,7 +283,9 @@ class Fanza(Parser):
         return result.replace("/", "-").strip('\\n')
 
     def getTags(self, htmltree):
-        return self.getFanzaStrings('ジャンル：')
+        results =  self.getFanzaStrings('ジャンル：')#去除无效信息tag,待增加
+        results = list(filter(lambda x: x !='サンプル動画' and x != '独占配信' and x != '単体作品' and x != 'Blu-ray（ブルーレイ）' and x != '歳末新春セール' and x !='特典付き・セット商品' and x !='DMM独家',results))
+        return results
 
     def getLabel(self, htmltree):
         ret = self.getFanzaString('レーベル')

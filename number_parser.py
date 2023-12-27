@@ -7,7 +7,7 @@ import typing
 G_spat = re.compile(
     "^\w+\.(cc|com|net|me|club|jp|tv|xyz|biz|wiki|info|tw|us|de)@|^22-sht\.me|"
     "^(fhd|hd|sd|1080p|720p|4K)(-|_)|"
-    "(-|_|\.)(fhd|hd|sd|1080p|720p|4K|x264|x265|uncensored|hack|leak|chs|cht)",#添加对.chs,cht支持
+    "(-|_)(fhd|hd|sd|1080p|720p|4K|x264|x265|uncensored|hack|leak)",#添加对.chs,cht支持
     re.IGNORECASE)
 
 
@@ -38,9 +38,11 @@ def get_number(debug: bool, file_path: str) -> str:
     'snis-829'
     """
     filepath = os.path.basename(file_path)
+    print(filepath)
     # debug True 和 False 两块代码块合并，原因是此模块及函数只涉及字符串计算，没有IO操作，debug on时输出导致异常信息即可
     try:
         # 先对自定义正则进行匹配
+        print('尝试初步正则匹配')
         if config.getInstance().number_regexs().split().__len__() > 0:
             for regex in config.getInstance().number_regexs().split():
                 try:
@@ -48,20 +50,28 @@ def get_number(debug: bool, file_path: str) -> str:
                         return re.search(regex, filepath).group()
                 except Exception as e:
                     print(f'[-]custom regex exception: {e} [{regex}]')
-
+        
         file_number = get_number_by_dict(filepath)
+        
+        if file_number is None:
+            print('[!]初步正则匹配失败！')
         if file_number:
             return file_number
         elif '字幕组' in filepath or 'SUB' in filepath.upper() or re.match(r'[\u30a0-\u30ff]+', filepath):
+            print(filepath)
             filepath = G_spat.sub("", filepath)
             filepath = re.sub("\[.*?\]","",filepath)
             filepath = filepath.replace(".chs", "").replace(".cht", "")
             file_number = str(re.findall(r'(.+?)\.', filepath)).strip(" [']")
             return file_number
         elif '-' in filepath or '_' in filepath:  # 普通提取番号 主要处理包含减号-和_的番号
+            
             filepath = G_spat.sub("", filepath)
+            
             filename = str(re.sub("\[\d{4}-\d{1,2}-\d{1,2}\] - ", "", filepath))  # 去除文件名中时间
-            filename = str(re.sub("\[.*?\]","",filepath))
+            
+            filename = str(re.sub("\[.*?\]","",filepath))#开始阶段删除方括号（方括号中结果一般没有正确结果，如果有那我也没办法）
+            filename = os.path.splitext(filename)[0].strip()
             atPosition = filename.find('@')
             if atPosition != -1:
                 filename = filename[atPosition + 1:]
@@ -69,8 +79,11 @@ def get_number(debug: bool, file_path: str) -> str:
             if 'fc2' in lower_check:
                 filename = lower_check.replace('--', '-').replace('_', '-').upper()
             filename = re.sub("[-_]cd\d{1,2}", "", filename, flags=re.IGNORECASE)
+
             if not re.search("-|_", filename): # 去掉-CD1之后再无-的情况，例如n1012-CD1.wmv
-                return str(re.search(r'\w+', filename[:filename.find('.')], re.A).group())
+                num =  re.search(r'\w+', filename[:filename.find('.')], re.A)
+                if num != None:
+                    return str(num.group())
             file_number =  os.path.splitext(filename)
             filename = re.search(r'[\w\-_]+', filename, re.A)
             if filename:
@@ -93,28 +106,18 @@ def get_number(debug: bool, file_path: str) -> str:
             return new_file_number.upper()
         else:  # 提取不含减号-的番号，FANZA CID,动画名
             #匹配去掉所有括号的结果
-
+            
+            print('[!]开始尝试匹配里番')
             lifan = re.sub(r'\[.*?\]','',file_path)
             lifan = lifan.replace('.chs','').replace('.cht','') 
+            
             lifan = os.path.splitext(lifan)[0]
+            print('[+]处理成功！得到标题名是：'+lifan)
             return lifan.strip() #返回去除所有括号内内容的结果
-            '''    暂不匹配欧美番号
-            # 欧美番号匹配规则
-            oumei = re.search(r'[a-zA-Z]+\.\d{2}\.\d{2}\.\d{2}', filepath)
-            if oumei:
-                return oumei.group()
-            try:
-                return str(
-                    re.findall(r'(.+?)\.',
-                               str(re.search('([^<>/\\\\|:""\\*\\?]+)\\.\\w+$', filepath).group()))).strip(
-                    "['']").replace('_', '-')
-            except:
-                return str(re.search(r'(.+?)\.', filepath)[0])
-            '''
     except Exception as e:
         if debug:
             print(f'[-]Number Parser exception: {e} [{file_path}]')
-        return None
+        return None 
         
 
 
@@ -138,9 +141,11 @@ def get_number_by_dict(filename: str) -> typing.Optional[str]:
     try:
         for k, v in G_TAKE_NUM_RULES.items():
             if re.search(k, filename, re.I):
+                print(v(filename))
                 return v(filename)
     except:
         pass
+    print('未能匹配到番号')
     return None
 
 

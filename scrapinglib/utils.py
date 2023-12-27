@@ -11,6 +11,7 @@ def getTreeElement(tree: HtmlElement, expr='', index=0):
     if expr == '':
         return ''
     result = tree.xpath(expr)
+    
     try:
         return result[index]
     except:
