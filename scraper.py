@@ -187,7 +187,7 @@ def get_data_from_json(
    # if conf.number_uppercase():
       #  json_data['number'] = number.upper()
         
-    #直接将number整理成标准格式（不适用于里番，需要另行搜索请自行修改成可搜索格式
+    #直接将number整理成标准格式（不适用于里番，为保证可搜索性使用刮削得到的标题，需要另行搜索请自行修改成可搜索格式）
     if json_data['animeflag'] == False:
         json_data['number'] = getRightNumber(number)
     

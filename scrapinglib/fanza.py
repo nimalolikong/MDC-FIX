@@ -284,7 +284,7 @@ class Fanza(Parser):
 
     def getTags(self, htmltree):
         results =  self.getFanzaStrings('ジャンル：')#去除无效信息tag,待增加
-        results = list(filter(lambda x: x !='サンプル動画' and x != '独占配信' and x != '単体作品' and x != 'Blu-ray（ブルーレイ）' and x != '歳末新春セール' and x !='特典付き・セット商品' and x !='DMM独家',results))
+        results = list(filter(lambda x: x !='サンプル動画' and x != '独占配信' and x != '単体作品' and x != 'Blu-ray（ブルーレイ）' and x != '歳末新春セール' and x !='特典付き・セット商品' and x !='DMM独家' and 'セール' not in x and '独占' not in x,results))
         return results
 
     def getLabel(self, htmltree):

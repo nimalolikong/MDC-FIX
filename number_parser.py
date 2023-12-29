@@ -38,11 +38,11 @@ def get_number(debug: bool, file_path: str) -> str:
     'snis-829'
     """
     filepath = os.path.basename(file_path)
-    print(filepath)
+    
     # debug True 和 False 两块代码块合并，原因是此模块及函数只涉及字符串计算，没有IO操作，debug on时输出导致异常信息即可
     try:
         # 先对自定义正则进行匹配
-        print('尝试初步正则匹配')
+        print('[+]开始尝试初步正则匹配')
         if config.getInstance().number_regexs().split().__len__() > 0:
             for regex in config.getInstance().number_regexs().split():
                 try:
@@ -72,12 +72,12 @@ def get_number(debug: bool, file_path: str) -> str:
         elif '-' in filepath or '_' in filepath:  # 普通提取番号 主要处理包含减号-和_的番号
             
             filepath = G_spat.sub("", filepath)
-            print(filepath)
+            
             filename = str(re.sub("\[\d{4}-\d{1,2}-\d{1,2}\] - ", "", filepath))  # 去除文件名中时间
-            print(filename)
+            
             filename = str(re.sub("\[.*?\]","",filepath))#开始阶段删除方括号（方括号中结果一般没有正确结果，如果有那我也没办法）
             filename = os.path.splitext(filename)[0].strip()
-            print(filename)
+            
             atPosition = filename.find('@')
             if atPosition != -1:
                 filename = filename[atPosition + 1:]
@@ -85,7 +85,7 @@ def get_number(debug: bool, file_path: str) -> str:
             if 'fc2' in lower_check:
                 filename = lower_check.replace('--', '-').replace('_', '-').upper()
             filename = re.sub("[-_]cd\d{1,2}", "", filename, flags=re.IGNORECASE)
-            print(filename)
+            
             if not re.search("-|_", filename): # 去掉-CD1之后再无-的情况，例如n1012-CD1.wmv
                 num =  re.search(r'\w+', filename[:filename.find('.')], re.A)
                 if num != None:
@@ -153,7 +153,7 @@ def get_number_by_dict(filename: str) -> typing.Optional[str]:
                 return v(filename)
     except:
         pass
-    print('未能匹配到番号')
+    
     return None
 
 
