@@ -4,11 +4,12 @@ import re
 from lxml import etree
 from .httprequest import request_session
 from .parser import Parser
-
+from selenium.webdriver import ChromeOptions
+from selenium import webdriver
+from selenium.webdriver.common.by import By
 
 class Msin(Parser):
     source = 'msin'
-
     expr_number = '//div[@class="mv_fileName"]/text()'
     expr_title = '//div[@class="mv_title"]/text()'
     expr_title_unsubscribe = '//div[@class="mv_title unsubscribe"]/text()'
@@ -31,10 +32,21 @@ class Msin(Parser):
 
     def search(self, number: str):
         self.number = number.lower().replace('fc2-ppv-', '').replace('fc2-', '')
-        self.cookies = {"age": "off"}
         self.detailurl = 'https://db.msin.jp/search/movie?str=fc2-ppv-' + self.number
-        session = request_session(cookies=self.cookies, proxies=self.proxies, verify=self.verify)
-        htmlcode = session.get(self.detailurl).text
+        options = ChromeOptions()
+        proxy = self.proxies['http'].replace('http://','')
+        print('[+]Selenuim 代理已经连通，地址：'+proxy)
+        options.add_argument(('--proxy-server=' + proxy))
+        '''
+        有时会反复进行ssl连接,请查看是否开启了全局连接
+        '''
+        driver = webdriver.Chrome(options=options)
+        driver.get(self.detailurl)
+        
+        driver.find_element(By.XPATH,'/html/body/div[8]/div[2]/img[1]').click()
+        
+        
+        htmlcode = driver.page_source
         htmltree = etree.HTML(htmlcode)
         # if title are null, use unsubscribe title
         if super().getTitle(htmltree) == "":
@@ -67,4 +79,4 @@ class Msin(Parser):
         return super().getCover(htmltree)
 
     def getNum(self, htmltree):
-        return 'FC2-' + self.number
+        return 'FC2-PPV-' + self.number

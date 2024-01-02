@@ -38,7 +38,7 @@ class Fc2(Parser):
         return result
 
     def getNum(self, htmltree):
-        return 'FC2-' + self.number
+        return 'FC2-PPV-' + self.number
 
     def getRelease(self, htmltree):
         return super().getRelease(htmltree).strip(" ['販売日 : ']").replace('/','-')

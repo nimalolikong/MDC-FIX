@@ -177,9 +177,9 @@ class Fanza(Parser):
         '''
         driver = webdriver.Chrome(options=options)
         driver.get(url)
-        time.sleep(1)
+        #time.sleep(1)
         driver.find_element(By.XPATH,'/html/body/table/tbody/tr/td[2]/div[2]/div[1]/div/div[3]/p').click()
-        time.sleep(1)
+        #time.sleep(1)
         ans = driver.page_source
 
 
