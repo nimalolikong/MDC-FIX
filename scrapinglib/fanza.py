@@ -135,24 +135,26 @@ class Fanza(Parser):
                         url = true_url_list[0]
                         print(f'[!]未发现anime关键词，默认返回第一个URL：{url}')
                     return url#最后都没有返回第一个
-                elif url_count >= 3:
-                    print('[+]是电影,但是结果过多，可能是电影太老，将最后开始寻找最后包含dvd关键字的url')
+                else:
+                    print('[+]是电影，开始处理...')
                     index = url_count 
                     result = ''
-                    while index > 0:#倒序循环(才知道python实现倒序循环就是依托还是用倒序实现的，-jh  20231220)
+                    while index > 0:#倒序循环(才知道python实现倒序循环就是依托还是只能用while实现的，-jh  20231220)
                        index -= 1
                        
                        url = true_url_list[index]
                        print('[+]'+url)
                        if f_number in url: 
-                            print('[+]匹配成功，返回最老的符合条件的结果！')
-                            return url     
-                    print('[!]未能匹配到小写番号，返回第一个url')                                                      
+                            print('[+]匹配标题成功，返回匹配的结果！')
+                            return url  
+                       if result == '' and 'dvd' in url:
+                            print('[+]得到最靠后的包含dvd关键词的结果！')
+                            result = url   
+                    if result != '':
+                        print('[+]未能匹配到包含标题的结果，返回最后一个包含dvd关键字的结果！')
+                        return result
+                    print('[!]未能匹配到标题和dvd关键词，将返回第一个url')                                                      
                     return true_url_list[0]    
-                else:
-                    url = true_url_list[0]
-                    print(f'[+]是电影,将直接返回第一个URL{url}')
-                    return url
             else:    
                 print('[!]未查询到商品结果，请查看刮削名是否正确，或者直接重命名文件') 
                  
@@ -284,7 +286,7 @@ class Fanza(Parser):
 
     def getTags(self, htmltree):
         results =  self.getFanzaStrings('ジャンル：')#去除无效信息tag,待增加
-        results = list(filter(lambda x: x !='サンプル動画' and x != '独占配信' and x != '単体作品' and x != 'Blu-ray（ブルーレイ）' and x != '歳末新春セール' and x !='特典付き・セット商品' and x !='DMM独家' and 'セール' not in x and '独占' not in x,results))
+        results = list(filter(lambda x: x !='サンプル動画' and x != '独占配信' and x != '単体作品' and x != 'Blu-ray（ブルーレイ）' and x != '歳末新春セール' and x !='特典付き・セット商品' and x !='DMM独家' and 'セール' not in x and '独占' not in x and x != 'セル仕様' ,results))
         return results
 
     def getLabel(self, htmltree):
