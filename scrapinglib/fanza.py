@@ -143,12 +143,12 @@ class Fanza(Parser):
                        index -= 1
                        
                        url = true_url_list[index]
-                       print('[+]'+url)
+                       
                        if f_number in url: 
-                            print('[+]匹配标题成功，返回匹配的结果！')
+                            print('[+]url匹配标题成功，返回匹配的结果！')
                             return url  
                        if result == '' and 'dvd' in url:
-                            print('[+]得到最靠后的包含dvd关键词的结果！')
+                            print('[+]未能匹配到包含标题的结果，先获取靠后的包含dvd关键词的结果！')
                             result = url   
                     if result != '':
                         print('[+]未能匹配到包含标题的结果，返回最后一个包含dvd关键字的结果！')

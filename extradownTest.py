@@ -23,7 +23,11 @@ pic_headers = {"User-Agent":G_USER_AGENT,"referer":"https://pixhost.to/"}
 '''
 添加功能测试文件，已集成到项目中
 '''
-
+""" proxy = '127.0.0.1:7890'
+proxies = {
+"http": "http://%(proxy)s/" % {'proxy': proxy},
+"https": "https://%(proxy)s/" % {'proxy': proxy}
+} """
 
 def get_html(url,header:dict = None, cookies: dict = None,return_type: str = None, encoding: str = None):
     """
@@ -97,6 +101,7 @@ def getPreviewImageUrlFromBlogJAV(url):
     if len(image_list) == 0:
         print("未找到blogjav对应位置缩略图，请查看代码")
         return ""
+    print(len(image_list))
     targetImageUrl = image_list[0].replace('thumbs', 'images').replace('/t', '/img')
     return targetImageUrl
 def findPreviewImagesFromJAVStore(number):
@@ -240,19 +245,30 @@ def getRightNumber(number):
     suffix = num[index:]
     return prefix + '-' + suffix
 if __name__ == '__main__':
-    #number = 'MIDV-530'
-   # multiThreadToGetUrl(number)
-    url = 'https://www.dmm.co.jp/search/=/searchstr=%E3%82%AD%E3%83%A1%E6%81%8B%EF%BC%81%20%E9%AB%98%E5%B6%BA%E3%81%AE%E8%8F%AF%E3%81%A8%E5%B9%BC%E3%81%AA%E3%81%98%E3%81%BF%E3%81%8C%E3%82%AD%E3%83%9E%E3%81%A3%E3%81%9F%E7%90%86%E7%94%B1%20%E4%B8%8A%E5%B7%BB%E9%AD%94%E6%B3%95%E3%81%AE%E8%96%AC%E3%81%A7%E6%81%8B%E3%81%AE%E6%88%90%E5%B0%B1%E3%82%92/limit=30/sort=date/'
+
+    
+
+   # url = 'https://db.msin.jp/search/movie?str=fc2-ppv-4025269'
+
     
     
     
-    h = get_html(url)
     
-    print(h.status_code)
     
-    outline = h.xpath('/html/body/table/tbody/tr/td[2]/div/table/tbody/tr/td[1]/div[3]/p/story')
-    print(len(outline))
-    print(outline)
+    #options = ChromeOptions()
+   # print('[+]Selenuim 代理已经连通，地址：'+proxy)
+   # options.add_argument(('--proxy-server=' + proxy))
+    '''
+    有时会反复进行ssl连接,请查看是否开启了全局连接
+    '''
+    #driver = webdriver.Chrome(options=options)
+   # driver.get(url)
+    
+    #driver.find_element(By.XPATH,'/html/body/div[8]/div[2]/img[1]').click()
+    
+    #print(driver.page_source)
+    
+    
     #h = headers
     #print(headers)
     #cookie = {'Cookie':'notified_popup_id=%2C67; app_uid=Z/6RlWOIviUZaYQR+3BhAg==; secid=2765d77a680079246360d122d7eddce2; login_secure_id=2765d77a680079246360d122d7eddce2; cdp_id=f3IKAYM3GXGnRM3b; cklg=ja; adpf_uid=gszdlLmNTMUxFjCb; guest_id=CwdAXx9XVwdUVFJP; age_check_done=1; is_intarnal=true; i3_ab=7678; mbox=session#1702888502494-604220#1702890428|check#true#1702888628; ckcy=1; _dd_s=logs=1&id=ebadc9ea-b761-4361-b462-e1660d93c264&created=1702888502942&expire=1702889643092'}
