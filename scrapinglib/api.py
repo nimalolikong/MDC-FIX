@@ -89,13 +89,17 @@ class Scraping:
                     if data == 404:
                         continue
                     json_data = json.loads(data)
+
+                    
                 except Exception as e:
                     if config.getInstance().debug():
                         print(e)
                 # if any service return a valid return, break
+
                 if self.get_data_state(json_data):
                     if self.debug:
                         print(f"[+]Find movie [{name}] metadata on website '{source}'")
+
                     break
             except:
                 continue
@@ -142,7 +146,12 @@ class Scraping:
                 if self.get_data_state(json_data):
                     if self.debug:
                         print(f"[+]Find movie [{number}] metadata on website '{source}'")
-                    break
+                    if source == 'fanza' and json_data['animeflag'] == False and number.replace('-','').lower() not in json_data['animenumber']:
+                      #电影可能不匹配，采用备用javbus刮削
+                      print('[!]fanza可能未匹配成功，将继续匹配下一个源。')
+                      continue
+                    else:
+                      break
             except:
                 continue
 
