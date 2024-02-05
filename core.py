@@ -226,7 +226,7 @@ def actor_photo_download(actors, save_dir, number):
 def extrafanart_download(data, path, number, filepath, json_data=None, animeflag = False):
     if animeflag == False:
     ### 添加预览图到剧照list中
-      previewImageUrlList = multiThreadToGetUrl(number)
+      previewImageUrlList = getPreImgByOrder(number)
       for p_url in previewImageUrlList:
           if p_url != "":
             data.append(p_url)
@@ -1248,12 +1248,15 @@ def getPreviewImageUrlFromJAVStore(url):
         print("[!]无法加载javstore页面")
     
     data = etree.HTML(i_html.text)
-    url_list = data.xpath('/html/body/div[1]/div[2]/div[1]/div[2]/div[2]/a[1]/@href')
+    url_list = data.xpath('/html/body/div[1]/div[2]/div[1]/div[2]/div[2]/a[1]/img/@src')
     if len(url_list) ==0 :
         print("[!]未找到javstore图片")
         return []
-    
-    return url_list[:1]
+    rep_list = []
+    for url in url_list:
+        url = url.replace('.th', '')
+        rep_list.append(url)
+    return rep_list[:1]
 
 def imageUrlFromBlogJAV(number):
     blog_page_url = findPreviewImagesFromBlogJAV(number)
@@ -1267,7 +1270,7 @@ def imageUrlFromJAVStore(number):
     if javstore_page_url != "":
       preview_url_2 = getPreviewImageUrlFromJAVStore(javstore_page_url)
     return preview_url_2
-
+""" 
 def multiThreadToGetUrl(number):
     with ThreadPoolExecutor(max_workers=2) as t:
         print("[+]开始获取Preview Image Url...")
@@ -1284,19 +1287,25 @@ def multiThreadToGetUrl(number):
                     rep_list.append(url)
         for url in rep_list:
             print("[+]Get Preview Image Url! url is " +url)
-        return rep_list
-def toGetPreImgUrl(number):
-    print("[+]开始获取Preview Image Url...")
-    ans = []
-    u1 = imageUrlFromBlogJAV(number)
-    if u1 != "":
-        ans.append(u1)
+        return rep_list """
+def getPreImgByOrder(number):
+    print("[+]开始从BlogJAV获取PreImg Url...")
+    preimgList = []
+    preimgList = imageUrlFromBlogJAV(number)
+    
+    if len(preimgList) == 0:
+        print("[+]未能从BlogJAV获取PreImg Url，开始从JAVStore获取PreImg Url...")
+        preimgList = imageUrlFromJAVStore(number)
+        if len(preimgList) == 0:
+            print("[+]未能从JAVStore获取PreImg Url,直接返回")
+        else:
+            print("[+]成功获取JAVStore的预览大图! 已添加到extrafanart下载列表")
+    else:
         print("[+]成功获取BlogJav的预览大图! 已添加到extrafanart下载列表")
-    u2 = imageUrlFromJAVStore(number)
-    if u2 != "":
-        ans.append(u2)
-        print("[+]成功获取JAVStore的预览大图! 已添加到extrafanart下载列表")
-    return ans         
+    return preimgList
+        
+
+
 
     
     

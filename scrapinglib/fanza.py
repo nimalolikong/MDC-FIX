@@ -144,7 +144,7 @@ class Fanza(Parser):
                        
                        url = true_url_list[index]
                        
-                       if f_number in url: 
+                       if f_number in url and 'h_' not in url: 
                             print('[+]url匹配标题成功，返回匹配的结果！')
                             return url  
                        if result == '' and 'dvd' in url:
