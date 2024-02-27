@@ -145,15 +145,19 @@ class Fanza(Parser):
                        url = true_url_list[index]
                        
                        if f_number in url and 'h_' not in url: 
-                            print('[+]url匹配标题成功，返回匹配的结果！')
-                            return url  
+                            if 'dvd' in url :
+                                print('[+]成功获得包含番号的url，且包含dvd关键字！')
+                                return url
+                            if result == '':
+                                print('[+]成功获得包含番号的url，暂不包含dvd关键字！')
+                                result = url
                        if result == '' and 'dvd' in url:
-                            print('[+]未能匹配到包含标题的结果，先获取靠后的包含dvd关键词的结果！')
+                            print('[+]未能匹配到包含番号的结果，先获取靠后的包含dvd关键词的结果！')
                             result = url   
                     if result != '':
-                        print('[+]未能匹配到包含标题的结果，返回最后一个包含dvd关键字的结果！')
+                        print('[!]未能完全匹配到包含番号的结果，返回满足基本条件的结果！')
                         return result
-                    print('[!]未能匹配到标题和dvd关键词，将返回第一个url')                                                      
+                    print('[!]未能匹配到标题和dvd关键词，将返回第一个候选结果！')                                                      
                     return true_url_list[0]    
             else:    
                 print('[!]未查询到商品结果，请查看刮削名是否正确，或者直接重命名文件') 
@@ -218,7 +222,11 @@ class Fanza(Parser):
         flag = 1
         result = self.getTreeElement(htmltree, self.expr_outline).replace("\n", "")
         if result == '':
-            result = self.getTreeElement(htmltree, self.expr_outline2).xpath('string(.)').replace("\n", "")
+            result = self.getTreeElement(htmltree, self.expr_outline2)
+            if isinstance(result,str):
+                result = result.replace("\n", "")
+            else:
+                result = result.xpath('string(.)').replace("\n", "")
             flag = 2
         if result == '':
             result = self.getTreeElement(htmltree, self.expr_outline3).replace("\n", "")
