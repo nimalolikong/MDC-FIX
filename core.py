@@ -810,8 +810,8 @@ def core_main_no_net_op(movie_path, number):
         hack = True
         hack_word = "-hack"
 
-    if '4k'.upper() in str(movie_path).upper() or '4k' in movie_path:
-        _4k = True
+    #if '4k'.upper() in str(movie_path).upper() or '4k' in movie_path:
+    #   _4k = True
 
     if '.iso'.upper() in str(movie_path).upper() or '.iso' in movie_path:
         iso = True
@@ -1175,7 +1175,7 @@ def findPreviewImagesFromBlogJAV(number):
             if 'FHD' in nb:
                p_url = tmp_url
     if p_url != "":
-        print('[+]blogjav查找到链接！%s' % p_url) 
+        print('[+]blogjav查找到链接！' ) 
     else:
         print('[!]blogjav没有查找到链接！请检查！')  
     return p_url

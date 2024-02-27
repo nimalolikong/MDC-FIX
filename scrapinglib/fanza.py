@@ -18,7 +18,7 @@ class Fanza(Parser):
     # expr_cover = './/head/meta[@property="og:image"]/@content'
     expr_extrafanart = '//a[@name="sample-image"]/img/@src'
     expr_outline = "//div[@class='mg-b20 lh4']/text()"
-    expr_outline2 = "//div[@class='mg-b20 lh4']//p/text()"
+    expr_outline2 = "//div[@class='mg-b20 lh4']//p"
     expr_outline3 = "//div[@class='clear mg-b20 lh4']//p/text()"
     
     expr_outline_og = '//head/meta[@property="og:description"]/@content'
@@ -218,11 +218,13 @@ class Fanza(Parser):
         flag = 1
         result = self.getTreeElement(htmltree, self.expr_outline).replace("\n", "")
         if result == '':
-            result = self.getTreeElement(htmltree, self.expr_outline2).replace("\n", "")
+            result = self.getTreeElement(htmltree, self.expr_outline2).xpath('string(.)').replace("\n", "")
             flag = 2
         if result == '':
             result = self.getTreeElement(htmltree, self.expr_outline3).replace("\n", "")
             flag = 3
+        
+        print('[!]当前得到的outline简介：'+result)
         if 'STORY' in result:
             
             print('[!]有story标签！')#出现了不该出现的story标签，尝试重新处理编码
@@ -237,7 +239,7 @@ class Fanza(Parser):
             ans = htmltree.xpath(expr)
             
             
-            ans = etree.tostring(ans[0],encoding='unicode')#t手动使用etree.tostring并重编码
+            ans = etree.tostring(ans[0],encoding='unicode')#手动使用etree.tostring并重编码
             ans = str(re.sub("<.*?>","",ans))
             print('[!]处理story标签成功！')
             result = ans.replace('＜STORY＞', '').strip()
@@ -302,6 +304,7 @@ class Fanza(Parser):
             return ''
         return ret
     
+    """ 
     def getCover(self, htmltree):
         cover_number = self.number
         try:
@@ -319,6 +322,36 @@ class Fanza(Parser):
                 # people's major requirement is fetching the picture
                 raise ValueError("can not find image")
         return result
+     """
+    def getCover(self, htmltree):
+        result = ""
+        if self.animeflag:
+            cover_number = self.number
+            try:
+                result = htmltree.xpath('//*[@id="' + cover_number + '"]/@href')[0]
+            except:
+                # sometimes fanza modify _ to \u0005f for image id
+                if "_" in cover_number:
+                    cover_number = cover_number.replace("_", r"\u005f")
+                try:
+                    result = htmltree.xpath('//*[@id="' + cover_number + '"]/@href')[0]
+                except:
+                    print('[!]旧版匹配cover失败！启用新版匹配。')
+        try:
+            data = htmltree.xpath('//*[@id="sample-image-block"]') 
+            
+        except:
+            raise ValueError("can not find image")
+        if len(data) != 0:
+            url_list = data[0].xpath('//*[@name="package-image"]/img/@src')
+            
+            if isinstance(url_list,str):
+                result = url_list
+            else:
+                result = url_list[0]
+        result = result.replace('s.jpg', 'l.jpg')
+        
+        return result
 
     def getExtrafanart(self, htmltree):
         #if "anime" in self.detailurl:
@@ -330,10 +363,14 @@ class Fanza(Parser):
         if len(data) != 0:
           url_list = data[0].xpath('//*[@name="sample-image"]/img/@src')
           if len(url_list) != 0:
+                l = len(url_list)
+                url_template= url_list[0]
+                url_cuts = url_template.rsplit('-', 1)
+
                 sheet = []
-                for img_url in url_list:
-                    url_cuts = img_url.rsplit('-', 1)
-                    sheet.append(url_cuts[0] + 'jp-' + url_cuts[1])
+                for index in range(l):                    
+                    
+                    sheet.append(url_cuts[0] + 'jp-' + str(index + 1) + '.jpg')
                 return sheet
           
         return ''

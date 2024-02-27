@@ -64,7 +64,7 @@ def get_number(debug: bool, file_path: str) -> str:
         elif '字幕组' in filepath or 'SUB' in filepath.upper() or 'OVA' in filepath or re.match(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]+', filepath):
             print('[!]是里番，开始尝试匹配里番')
             lifan = re.sub(r'\[.*?\]','',file_path)
-            lifan = lifan.replace('.chs','').replace('.cht','') 
+            lifan = lifan.replace('.chs','').replace('.cht','').replace('(No Watermark)','')
             
             lifan = os.path.splitext(lifan)[0]
             print('[+]处理成功！得到标题名是：'+lifan)
@@ -117,7 +117,7 @@ def get_number(debug: bool, file_path: str) -> str:
             
             print('[!]开始尝试匹配里番')
             lifan = re.sub(r'\[.*?\]','',file_path)
-            lifan = lifan.replace('.chs','').replace('.cht','') 
+            lifan = lifan.replace('.chs','').replace('.cht','').replace('(No Watermark)','')
             
             lifan = os.path.splitext(lifan)[0]
             print('[+]处理成功！得到标题名是：'+lifan)
