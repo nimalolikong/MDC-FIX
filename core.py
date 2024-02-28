@@ -840,13 +840,13 @@ def core_main_no_net_op(movie_path, number):
     poster_path = f"poster{ext}"
     thumb_path = f"thumb{ext}"
     if config.getInstance().image_naming_with_number():
-        fanart_path = f"{prestr}-fanart{ext}"
-        poster_path = f"{prestr}-poster{ext}"
-        thumb_path = f"{prestr}-thumb{ext}"
+        fanart_path = f"{prestr}{part}-fanart{ext}"
+        poster_path = f"{prestr}{part}-poster{ext}"
+        thumb_path = f"{prestr}{part}-thumb{ext}"
     full_fanart_path = os.path.join(path, fanart_path)
     full_poster_path = os.path.join(path, poster_path)
     full_thumb_path = os.path.join(path, thumb_path)
-
+    print(fanart_path,poster_path,thumb_path)
     if not all(os.path.isfile(f) for f in (full_fanart_path, full_thumb_path)):
         return
 
@@ -855,6 +855,8 @@ def core_main_no_net_op(movie_path, number):
         add_mark(full_poster_path, full_thumb_path, cn_sub, leak, uncensored, hack, _4k, iso)
 
     if multi and conf.jellyfin_multi_part_fanart():
+        print('[!]是分集')
+        print(part)
         linkImage(path, number, part, leak_word, c_word, hack_word, ext)
 
 
@@ -991,10 +993,10 @@ def core_main(movie_path, number_th, oCC, specified_source=None, specified_url=N
     fanart_path = f"fanart{ext}"
     poster_path = f"poster{ext}"
     thumb_path = f"thumb{ext}"
-    if config.getInstance().image_naming_with_number():
-        fanart_path = f"{number}{leak_word}{c_word}{hack_word}-fanart{ext}"
-        poster_path = f"{number}{leak_word}{c_word}{hack_word}-poster{ext}"
-        thumb_path = f"{number}{leak_word}{c_word}{hack_word}-thumb{ext}"
+    if config.getInstance().image_naming_with_number() or part != "":
+        fanart_path = f"{number}{part}{leak_word}{c_word}{hack_word}-fanart{ext}"
+        poster_path = f"{number}{part}{leak_word}{c_word}{hack_word}-poster{ext}"
+        thumb_path = f"{number}{part}{leak_word}{c_word}{hack_word}-thumb{ext}"
 
     # main_mode
     #  1: 刮削模式 / Scraping mode
@@ -1139,21 +1141,26 @@ def getBlogJAVSearchVal(number):
     '''
     新增处理CD1等后缀
     '''
-    bid = ""
-    pos = number.find('-CD')
-    if pos != -1:
-        bid = number[:pos]
-    else:
-        bid = number
+    bid = getTrueNum(number)
     bid = bid.replace('-','+')
     
     return bid
+def getTrueNum(number):
+    '''
+    解决使用-CD时number不是默认number的情况
+    '''
+    true_num = number
+    pos = number.find('-CD') 
+    if pos != -1:
+        true_num = number[:pos]
+    return true_num
+        
 def getFC2Number(number):
     fc2_num = number.replace('+', ' ')
     return fc2_num
 def findPreviewImagesFromBlogJAV(number):
-    
-    bid = getBlogJAVSearchVal(number)
+    true_num = getTrueNum(number)
+    bid = getBlogJAVSearchVal(true_num)
     fc2_num = getFC2Number(bid) 
     
     url= 'https://blogJAV.net/?s='+bid
@@ -1168,7 +1175,7 @@ def findPreviewImagesFromBlogJAV(number):
 
     for b in dlist:
         nb = etree.tostring(b).decode()
-        if number in nb or fc2_num in nb:
+        if true_num in nb or fc2_num in nb:
             tmp_url = b.xpath('./a/@href')[0]
             if p_url == "":
                p_url = tmp_url
@@ -1186,13 +1193,7 @@ def findPreviewImagesFromJAVStore(number):
     '''
     处理-cd后缀
     '''
-    num = ''
-    
-    pos = number.find('-CD')
-    if pos != -1:
-        num = number[:pos]
-    else:
-        num = number
+    num = getTrueNum(number)
     url = f'https://javstore.net/search/{num}.html'
     p_html = get_html(url,return_type="object")
     if p_html.status_code != 200:
@@ -1212,10 +1213,10 @@ def findPreviewImagesFromJAVStore(number):
     for ele in dlist:
         cnt += 1
         tmp = etree.tostring(ele).decode()
-        if number in tmp:
+        if num in tmp:
             if p_url == "":
                 p_url = ele.xpath('./a/@href')[0]
-            if 'FHD' in tmp or 'Mosaic' in tmp:
+            if 'FHD' in tmp or 'Mosaic' in tmp or 'mosaic' in tmp:
                 p_url = ele.xpath('./a/@href')[0]
         else:
             break
@@ -1236,7 +1237,7 @@ def getPreviewImageUrlFromBlogJAV(url):
         print("[!]未找到blogjav对应位置缩略图，请查看代码")
         return url_list
     if len(image_list) > 1:
-        print('获得预览图大于一')
+        print('[!]获得预览图大于一!')
     
     for url in image_list:
         url_list.append(url.replace('thumbs', 'images').replace('/t', '/img'))
@@ -1250,8 +1251,10 @@ def getPreviewImageUrlFromJAVStore(url):
     data = etree.HTML(i_html.text)
     url_list = data.xpath('/html/body/div[1]/div[2]/div[1]/div[2]/div[2]/a[1]/img/@src')
     if len(url_list) ==0 :
-        print("[!]未找到javstore图片")
-        return []
+        url_list = data.xpath('/html/body/div[1]/div[2]/div[1]/div[2]/div[2]/a[1]/@href')
+        if len(url_list)== 0:
+            print("[!]未找到JAVStore图片!")
+            return []
     rep_list = []
     for url in url_list:
         url = url.replace('.th', '')
