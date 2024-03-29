@@ -351,14 +351,15 @@ class Fanza(Parser):
         except:
             raise ValueError("can not find image")
         if len(data) != 0:
-            url_list = data[0].xpath('//*[@name="package-image"]/img/@src')
+            url_list = data[0].xpath('//*[@name="package-image"]/img/@data-lazy')
             
             if isinstance(url_list,str):
                 result = url_list
             else:
                 result = url_list[0]
-        result = result.replace('s.jpg', 'l.jpg')
         
+        result = result.replace('s.jpg', 'l.jpg')
+        print(result)
         return result
 
     def getExtrafanart(self, htmltree):
@@ -369,18 +370,9 @@ class Fanza(Parser):
         data = htmltree.xpath('//*[@id="sample-image-block"]') 
 
         if len(data) != 0:
-          url_list = data[0].xpath('//*[@name="sample-image"]/img/@src')
-          if len(url_list) != 0:
-                l = len(url_list)
-                url_template= url_list[0]
-                url_cuts = url_template.rsplit('-', 1)
-
-                sheet = []
-                for index in range(l):                    
-                    
-                    sheet.append(url_cuts[0] + 'jp-' + str(index + 1) + '.jpg')
-                return sheet
-          
+          url_list = data[0].xpath('//*[@name="sample-image"]/img/@data-lazy')
+          return url_list
+        
         return ''
 
     def getTrailer(self, htmltree):
