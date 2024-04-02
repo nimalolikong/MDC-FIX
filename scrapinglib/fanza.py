@@ -17,21 +17,22 @@ class Fanza(Parser):
     expr_actor = "//td[contains(text(),'出演者')]/following-sibling::td/span/a/text()"
     # expr_cover = './/head/meta[@property="og:image"]/@content'
     expr_extrafanart = '//a[@name="sample-image"]/img/@src'
-    expr_outline = "//div[@class='mg-b20 lh4']/text()"
+    expr_outline = "//div[@class='mg-b20 lh4']"
     expr_outline2 = "//div[@class='mg-b20 lh4']//p"
-    expr_outline3 = "//div[@class='clear mg-b20 lh4']//p/text()"
+    expr_outline3 = "//div[@class='clear mg-b20 lh4']//p"
     
     expr_outline_og = '//head/meta[@property="og:description"]/@content'
     expr_runtime = "//td[contains(text(),'収録時間')]/following-sibling::td/text()"
 
     def search(self, number):
-        if 'OVA'in number or re.search(r"[\u3040-\u309F\u30A0-\u30FF]+", number):
+        if 'OVA'in number or re.search(r"[\u3040-\u309F\u30A0-\u30FF]", number) or ' ' in number:
             print('[+]是动画名，开始在Fanza搜索')
             self.animeflag = True
         else:
             print('[+]是电影名，开始在Fanza搜索')
         
         self.number = number
+        self.oldMatchFlag = False
         self.outnumber = number
         if self.specifiedUrl:
             self.detailurl = self.specifiedUrl
@@ -124,7 +125,7 @@ class Fanza(Parser):
                             print(f'[+]商品标题{title}')
                             print(f'[+]待匹配标题{temp_num}')
                             
-                            if temp_num in title:
+                            if temp_num in title and '限定版' not in title:
                                 print(f'[+]已匹配到标题，URL：{url}')
                                 result = url
                                 return result
@@ -219,40 +220,22 @@ class Fanza(Parser):
 
     def getOutline(self, htmltree):
         #try:
-        flag = 1
-        result = self.getTreeElement(htmltree, self.expr_outline).replace("\n", "")
+        
+        result = self.getTreeElement(htmltree, self.expr_outline)
+
         if result == '':
             result = self.getTreeElement(htmltree, self.expr_outline2)
-            if isinstance(result,str):
-                result = result.replace("\n", "")
-            else:
-                result = result.xpath('string(.)').replace("\n", "")
-            flag = 2
+            
         if result == '':
-            result = self.getTreeElement(htmltree, self.expr_outline3).replace("\n", "")
-            flag = 3
+            result = self.getTreeElement(htmltree, self.expr_outline3)
+        
+        if isinstance(result,str):
+            result = result.replace("\n", "")
+        else:
+            result = result.xpath('string(.)').replace("\n", "")    
         
         print('[!]当前得到的outline简介：'+result)
-        if 'STORY' in result:
-            
-            print('[!]有story标签！')#出现了不该出现的story标签，尝试重新处理编码
-            expr = ''
-            if flag == 1:#选择成功处理的表达式
-                expr = self.expr_outline
-            elif flag == 2:
-                expr = self.expr_outline2
-            else:
-                expr = self.expr_outline3
-            expr = expr.replace('/text()','')#去除/text()
-            ans = htmltree.xpath(expr)
-            
-            
-            ans = etree.tostring(ans[0],encoding='unicode')#手动使用etree.tostring并重编码
-            ans = str(re.sub("<.*?>","",ans))
-            print('[!]处理story标签成功！')
-            result = ans.replace('＜STORY＞', '').strip()
-            if len(result) > 0:
-                print('[!]去除story,并修改编码')  
+        
             
         if "※ 配信方法によって収録内容が異なる場合があります。" == result:
             result = self.getTreeElement(htmltree, self.expr_outline_og)
@@ -296,13 +279,24 @@ class Fanza(Parser):
 
     def getTags(self, htmltree):
         results =  self.getFanzaStrings('ジャンル：')#去除无效信息tag,待增加
+
         results = list(filter(lambda x: x !='サンプル動画' and x != '独占配信' and x != '単体作品' and x != 'Blu-ray（ブルーレイ）' and x != '歳末新春セール' and x !='特典付き・セット商品' and x !='DMM独家' and 'セール' not in x and '独占' not in x and x != 'セル仕様' and 'キャンペーン' not in x,results))
+        if self.animeflag == True:
+          maker = self.getLabel(htmltree)  
+          if maker != '':
+            results.append(maker)
         return results
 
     def getLabel(self, htmltree):
         ret = self.getFanzaString('レーベル')
         if ret == "----":
             return ''
+        if ret == "Queen Bee（メディアバンク）":
+            ret = "Queen Bee"
+        if ret == "King Bee（メディアバンク）":
+            ret = "King Bee"
+        if ret == "Pink Pineapple":
+            ret = "ピンクパイナップル"
         return ret
 
 
@@ -333,6 +327,7 @@ class Fanza(Parser):
      """
     def getCover(self, htmltree):
         result = ""
+        print('[!]开始下载封面...')
         if self.animeflag:
             cover_number = self.number
             try:
@@ -345,6 +340,9 @@ class Fanza(Parser):
                     result = htmltree.xpath('//*[@id="' + cover_number + '"]/@href')[0]
                 except:
                     print('[!]旧版匹配cover失败！启用新版匹配。')
+            if result != '':
+                print('[!]旧版匹配cover成功！')
+                return result
         try:
             data = htmltree.xpath('//*[@id="sample-image-block"]') 
             
@@ -368,11 +366,23 @@ class Fanza(Parser):
         #else:
         #    data = htmltree.xpath('/html/body/table/tbody/tr/td[2]/div/table/tbody/tr/td[1]/div[1]/div[1]/div[2]')
         data = htmltree.xpath('//*[@id="sample-image-block"]') 
-
+        print('[!]开始刮削截图...')
         if len(data) != 0:
-          url_list = data[0].xpath('//*[@name="sample-image"]/img/@data-lazy')
-          return url_list
+          extrafanart_images = data[0].xpath('//*[@name="sample-image"]/img/@data-lazy')
+          if extrafanart_images == []:
+              extrafanart_images = data[0].xpath('//*[@name="sample-image"]/img/@src')
+          if extrafanart_images == []:
+              print("[!]刮削extrafanart失败")   
+              return ''
+          results = []
+          for img_url in extrafanart_images:
+                    url_cuts = img_url.rsplit('-', 1)
+                    results.append(url_cuts[0] + 'jp-' + url_cuts[1])
+              
+          
+          return results
         
+        print("[!]刮削extrafanart失败")
         return ''
 
     def getTrailer(self, htmltree):
