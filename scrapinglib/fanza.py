@@ -170,7 +170,23 @@ class Fanza(Parser):
         得到在fanza打广告期间正确html地址
         '''
         ans = url
+        oprofile = webdriver.FirefoxOptions()
+        oprofile.accept_insecure_certs = True
+        oprofile.page_load_strategy = 'eager'
+        oprofile.set_preference("network.proxy.type", 1)
+        oprofile.set_preference("network.proxy.http", "127.0.0.1")
+        oprofile.set_preference("network.proxy.http_port", 7890)
+        oprofile.set_preference('network.proxy.socks', '127.0.0.1')
+        oprofile.set_preference('network.proxy.socks_port', 7890)
+        oprofile.set_preference('network.proxy.socks_remote_dns', False)
+        oprofile.set_preference("network.proxy.ssl", "127.0.0.1")
+        oprofile.set_preference("network.proxy.ssl_port", 7890)
+        driver = webdriver.Firefox(options=oprofile)
+        """"
         options = ChromeOptions()
+        options.add_argument('--ignore-certificate-errors')
+        options.add_argument('--ignore-ssl-errors')
+        options.add_argument('--disable-gpu')
         '''
         默认使用http代理，如果开启其他代理请自行修改源码
         '''
@@ -181,10 +197,12 @@ class Fanza(Parser):
         有时会反复进行ssl连接,请查看是否开启了全局连接
         '''
         driver = webdriver.Chrome(options=options)
+        """
         driver.get(url)
         #time.sleep(1)
-        driver.find_element(By.XPATH,'/html/body/table/tbody/tr/td[2]/div[2]/div[1]/div/div[3]/p').click()
+        #driver.find_element(By.XPATH,'/html/body/table/tbody/tr/td[2]/div[2]/div[1]/div/div[3]/p').click()
         #time.sleep(1)
+        driver.find_element(By.XPATH,'/html/body/div[4]/div[2]/div[2]/div[1]/div/div[3]/p').click()
         ans = driver.page_source
 
 
@@ -233,7 +251,14 @@ class Fanza(Parser):
             result = result.replace("\n", "")
         else:
             result = result.xpath('string(.)').replace("\n", "")    
-        
+        if "「コンビニ受取」" in result:
+            index = result.find("「コンビニ受取」")
+            result = result[:index]
+            result.strip()
+        if "商品について" in result:
+            index = result.find("商品について")
+            result = result[index+8:]
+            result.strip()
         print('[!]当前得到的outline简介：'+result)
         
             
@@ -246,12 +271,27 @@ class Fanza(Parser):
     
 
     def getRuntime(self, htmltree):
-        return str(re.search(r'\d+', super().getRuntime(htmltree)).group()).strip(" ['']")
+        print("[!]获取runtime播放时长")
+        runtime_tmp = re.search(r'\d+', super().getRuntime(htmltree))
+        print("[!]匹配runtime结构：")
+        print(runtime_tmp)
+
+        if runtime_tmp != None:
+            
+            runtime = str(runtime_tmp.group()).strip(" ['']")
+            print("播放时长："+runtime)
+            return runtime
+
+        else:
+            return ""
 
     def getDirector(self, htmltree):
         if "anime" not in self.detailurl:
             return self.getFanzaString('監督：')
+        elif self.getLabel(htmltree) == 'ばにぃうぉ～か～':
+            return '雷火剣'
         return ''
+
     
     def getActors(self, htmltree):
         if "anime" in self.detailurl:
@@ -280,7 +320,7 @@ class Fanza(Parser):
     def getTags(self, htmltree):
         results =  self.getFanzaStrings('ジャンル：')#去除无效信息tag,待增加
 
-        results = list(filter(lambda x: x !='サンプル動画' and x != '独占配信' and x != '単体作品' and x != 'Blu-ray（ブルーレイ）' and x != '歳末新春セール' and x !='特典付き・セット商品' and x !='DMM独家' and 'セール' not in x and '独占' not in x and x != 'セル仕様' and 'キャンペーン' not in x,results))
+        results = list(filter(lambda x: x !='サンプル動画' and x != '独占配信' and x != '単体作品' and x != 'Blu-ray（ブルーレイ）' and x != '歳末新春セール' and x !='特典付き・セット商品' and x !='DMM独家' and 'セール' not in x and '独占' not in x and x != 'セル仕様' and 'キャンペーン' not in x and '大感謝祭' not in x,results))
         if self.animeflag == True:
           maker = self.getLabel(htmltree)  
           if maker != '':
@@ -329,6 +369,7 @@ class Fanza(Parser):
         result = ""
         print('[!]开始下载封面...')
         if self.animeflag:
+            print('[!]是动画，尝试旧版匹配...')
             cover_number = self.number
             try:
                 result = htmltree.xpath('//*[@id="' + cover_number + '"]/@href')[0]
@@ -343,21 +384,48 @@ class Fanza(Parser):
             if result != '':
                 print('[!]旧版匹配cover成功！')
                 return result
+        print('[!]尝试新版匹配...')
         try:
             data = htmltree.xpath('//*[@id="sample-image-block"]') 
             
         except:
             raise ValueError("can not find image")
         if len(data) != 0:
-            url_list = data[0].xpath('//*[@name="package-image"]/img/@data-lazy')
+            print('[!]尝试懒加载检测...')
+            pkg_url = data[0].xpath('//*[@name="package-image"]/img/@data-lazy')
             
-            if isinstance(url_list,str):
-                result = url_list
-            else:
-                result = url_list[0]
+            result = ''
+            if isinstance(pkg_url,str) and 'ps.jpg' in pkg_url:
+                result = pkg_url
+                print('[!]是懒加载，封面缩略图链接为：'+result)
+            elif isinstance(pkg_url,list) and pkg_url != []:
+                for u in pkg_url:
+                        if 's.jpg' in u:
+                            result = u
+                            print('[!]是懒加载，封面缩略图链接为：'+result)
+                            break
+                
+            elif result == '':
+                print('[!]尝试正常加载检测...')
+                pkg_url = data[0].xpath('//*[@name="package-image"]/img/@src')
+                
+                    
+                    
+                        
+                
+                if isinstance(pkg_url,str):
+                    result = pkg_url 
+                    print('[!]是正常加载，封面缩略图链接为：'+result)   
+                else:
+                    
+                    for u in pkg_url:
+                        if 's.jpg' in u:
+                            result = u
+                            print('[!]是正常加载，封面缩略图链接为：'+result)
+                            break
         
         result = result.replace('s.jpg', 'l.jpg')
-        print(result)
+        print('[!]封面缩略图链接为：'+result)
         return result
 
     def getExtrafanart(self, htmltree):
@@ -367,10 +435,17 @@ class Fanza(Parser):
         #    data = htmltree.xpath('/html/body/table/tbody/tr/td[2]/div/table/tbody/tr/td[1]/div[1]/div[1]/div[2]')
         data = htmltree.xpath('//*[@id="sample-image-block"]') 
         print('[!]开始刮削截图...')
-        if len(data) != 0:
-          extrafanart_images = data[0].xpath('//*[@name="sample-image"]/img/@data-lazy')
-          if extrafanart_images == []:
-              extrafanart_images = data[0].xpath('//*[@name="sample-image"]/img/@src')
+        if len(data) != 0:                    
+          lazy_url_list = data[0].xpath('//*[@name="sample-image"]/img/@data-lazy')
+          tmp_images_list = data[0].xpath('//*[@name="sample-image"]/img/@src')
+          
+          true_images_list = []
+          for url in tmp_images_list:
+              if "dummy_ps.gif" not in url:
+                  true_images_list.append(url)
+          
+          extrafanart_images = true_images_list + lazy_url_list
+          
           if extrafanart_images == []:
               print("[!]刮削extrafanart失败")   
               return ''
@@ -378,7 +453,8 @@ class Fanza(Parser):
           for img_url in extrafanart_images:
                     url_cuts = img_url.rsplit('-', 1)
                     results.append(url_cuts[0] + 'jp-' + url_cuts[1])
-              
+          
+          
           
           return results
         
