@@ -24,7 +24,7 @@
   (目前我也只用这两个源)
 * 支持Fanza搜索动漫名，并在config中新加anime_naming_rule满足里番电影不同标题命名需求，注意不是文件名，文件名默认为能匹配的日文标题，大部分能匹配成功，如果匹配失败请尝试修改官方日文名
 * 修改Fanza刮削extrafanart失败(冬季特卖广告窗口给挡完了) ，新引入selenium作为webdriver，调试使用chrome(没有请[安装chrome](https://dl.google.com/tag/s/installdataindex/update2/installers/ChromeStandaloneSetup64.exe))从而关闭广告窗口并获取源码(会出现chrome调试窗口)  (请最好使用全局代理防止反复ssl连接失败)
-* 修复一部分fc2刮削失败的问题，仅使用fc2和msin刮削，但是仍存在刮削失败的可能，而且无法刮削到sukebei.nyaa.si简介中的图片
+* 修复一部分fc2刮削失败的问题，仅使用fc2ppvdb刮削，但是仍存在刮削失败的可能，而且无法刮削到sukebei.nyaa.si简介中的图片
 * 增加番号统一化，实现番号保存格式都是 **ABC-123**
 * 在nfo简介栏中默认写入番号，可在emby搭配油猴脚本[根据脚本快速搜索](https://sleazyfork.org/zh-CN/scripts/423350-%E6%A0%B9%E6%8D%AE%E7%95%AA%E5%8F%B7%E5%BF%AB%E9%80%9F%E6%90%9C%E7%B4%A2)-v0.17(作者没有维护最新版本，现阶段可使用最新版本是v0.17，请直接在历史版本安装-20231219)
 

@@ -154,7 +154,8 @@ def get_data_from_json(
         extrafanart = ''
 
     imagecut = json_data.get('imagecut')
-    tag = str(json_data.get('tag')).strip("[ ]").replace("'", '').replace(" ", '').split(',')  # 字符串转列表 @
+    #tag = str(json_data.get('tag')).strip("[ ]").replace("'", '').split(',')  # 字符串转列表 @
+    tag = json_data.get('tag')
     while 'XXXX' in tag:
         tag.remove('XXXX')
     while 'xxx' in tag:

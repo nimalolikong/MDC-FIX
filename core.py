@@ -955,8 +955,6 @@ def core_main(movie_path, number_th, oCC, specified_source=None, specified_url=N
         hack = True
         hack_word = "-hack"
 
-    if '4k'.upper() in str(movie_path).upper() or '4k' in movie_path:
-        _4k = True
 
     if '.iso'.upper() in str(movie_path).upper() or '.iso' in movie_path:
         iso = True
@@ -1225,6 +1223,10 @@ def findPreviewImagesFromJAVStore(number):
     return p_url
 
 def getPreviewImageUrlFromBlogJAV(url):
+    """
+    blogjav图床抽风，暂时弃用
+    """
+    #return ""
     p_html = get_html(url,json_headers= pic_headers, return_type="object")
     if p_html.status_code != 200:
        print("[!]无法加载blogJAV页面")
@@ -1293,7 +1295,8 @@ def multiThreadToGetUrl(number):
         return rep_list """
 def getPreImgByOrder(number):
     print("[+]开始从BlogJAV获取PreImg Url...")
-    preimgList = []
+    
+   # print("[!]blogjav图床出问题了，暂时只使用javstore,默认blogjav搜索失败！记得检查")
     preimgList = imageUrlFromBlogJAV(number)
     
     if len(preimgList) == 0:
