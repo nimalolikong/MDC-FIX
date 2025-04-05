@@ -7,6 +7,8 @@ from .parser import Parser
 from selenium.webdriver import ChromeOptions
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import time
 from urllib.parse import  quote
 class Fanza(Parser):
@@ -25,6 +27,7 @@ class Fanza(Parser):
     expr_runtime = "//td[contains(text(),'収録時間')]/following-sibling::td/text()"
 
     def search(self, number):
+        self.cookies = {"age_check_done": "1"}
         if 'OVA'in number or re.search(r"[\u3040-\u309F\u30A0-\u30FF]", number) or ' ' in number:
             print('[+]是动画名，开始在Fanza搜索')
             self.animeflag = True
@@ -76,12 +79,31 @@ class Fanza(Parser):
         只影响日语字符
         '''
         search_number = quote(number)#使用quote函数进行转换
+        result = ''
         '''
         重要补丁，因为里番第一部通常在其系列里面是没有序号的，也就是说搜出系列所有作品都会展示，这里采用时间排序，并把搜索所有结果
         放到一个list中，再进行判断
         '''
-        url = 'https://www.dmm.co.jp/search/=/searchstr='+search_number + '/limit=30/sort=date/'
-        print('[+]搜索页面URL：'+url)
+        page_url = 'https://www.dmm.co.jp/search/=/searchstr='+search_number + '/limit=30/sort=date'
+        search_url = "https://www.dmm.co.jp/age_check/=/declared=yes/?"+ urlencode({"rurl": page_url})
+        print('[+]搜索页面URL：'+search_url)
+        oprofile = webdriver.FirefoxOptions()
+        oprofile.accept_insecure_certs = True
+        oprofile.page_load_strategy = 'eager'
+        oprofile.add_argument('--headless')
+        oprofile.add_argument('--disable-gpu')
+        oprofile.add_argument('--window-size=1920x1080')
+        oprofile.set_preference("network.proxy.type", 1)
+        oprofile.set_preference("network.proxy.http", "127.0.0.1")
+        oprofile.set_preference("network.proxy.http_port", 7890)
+        oprofile.set_preference('network.proxy.socks', '127.0.0.1')
+        oprofile.set_preference('network.proxy.socks_port', 7890)
+        oprofile.set_preference('network.proxy.socks_remote_dns', False)
+        oprofile.set_preference("network.proxy.ssl", "127.0.0.1")
+        oprofile.set_preference("network.proxy.ssl_port", 7890)
+        driver = webdriver.Firefox(options=oprofile)
+        driver.get(search_url)
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '//div[contains(@class, "mx-3") and contains(@class, "mt-1.5")]/a[2]')))
         '''
         这里f_number特指av番号形式，如果是动画不会影响搜索结果
         '''
@@ -91,14 +113,13 @@ class Fanza(Parser):
         else:
             f_number = number.replace('-','').lower()
             print(f'[+]Fanza小写番号是 {f_number}')
-        search_htmlcode = self.getHtml(url)
         
-        if search_htmlcode != 404:#因为有动画名，直接查找是否有满足条件的搜索结果
+        if driver.page_source:#因为有动画名，直接查找是否有满足条件的搜索结果
             print('[+]成功获取搜索结果页面！')
             temp_num = number
-            s_etree = etree.HTML(search_htmlcode)
-            true_url_list = s_etree.xpath('//*[@class="tmb"]/a/@href')
-            title_list = s_etree.xpath('//*[@class="tmb"]/a/span[1]/img/@alt')#span是带省略号的，还有图片标签有简介救大命
+            true_url_list_ele = driver.find_elements(By.XPATH, '//div[contains(@class, "mx-3") and contains(@class, "mt-1.5")]/a[2]')
+            true_url_list = [true_url_list_ele.__getattribute__('get_attribute')('href') for true_url_list_ele in true_url_list_ele]
+            title_list = driver.find_elements(By.XPATH, '//div[contains(@class, "mx-3") and contains(@class, "mt-1.5")]/a[2]/p')#更新fanza新匹配规则
             url_count = len(true_url_list)
             if len(title_list)== url_count:
                 print('[+]商品标题名和URL个数对应')
@@ -109,16 +130,15 @@ class Fanza(Parser):
                 if self.animeflag:
                     print('[+]是动画,将最后开始寻找最后包含anime关键字的url')
                     index = url_count 
-                    result = ''
                     while index > 0:#倒序循环(才知道python实现倒序循环就是依托还是用倒序实现的，-jh  20231220)
                        index -= 1
                        
                        url = true_url_list[index]
                        print('[+]'+url)
                        
-                       title = title_list[index]
+                       title = title_list[index].text
                        print('[+]'+title)
-                       if 'anime' in url: 
+                       if 'anime' in url and 'mono' in url: 
                             if result == '':
                                print(f'[+]成功得到页面url,但暂未未匹配到标题名:  {url}')
                                result = url
@@ -128,42 +148,41 @@ class Fanza(Parser):
                             if temp_num in title and '限定版' not in title:
                                 print(f'[+]已匹配到标题，URL：{url}')
                                 result = url
-                                return result
-                    if result != '':
-                        url = result
-                        print(f'[!]未匹配到标题，返回最后带有anime关键词的URL：{url}')
-                    else:
-                        url = true_url_list[0]
-                        print(f'[!]未发现anime关键词，默认返回第一个URL：{url}')
-                    return url#最后都没有返回第一个
+                                break
+                    if result == '':
+                        result = true_url_list[0]
+                        print(f'[!]未匹配到标题，返回第一个URL：{result}')
                 else:
                     print('[+]是电影，开始处理...')
                     index = url_count 
-                    result = ''
                     while index > 0:#倒序循环(才知道python实现倒序循环就是依托还是只能用while实现的，-jh  20231220)
                        index -= 1
                        
                        url = true_url_list[index]
-                       
+                       title = title_list[index].text
+
                        if f_number in url and 'h_' not in url: 
                             if 'dvd' in url :
-                                print('[+]成功获得包含番号的url，且包含dvd关键字！')
-                                return url
+                                if 'ブルーレイディスク' in title and result == '':
+                                    print('[+]成功获得包含番号和dvd关键词的url，且是蓝光，不优先刮削！')
+                                    result = url
+                                else:
+                                    print('[+]成功获得包含番号和dvd关键词的url，且是DVD，优先刮削！')
+                                    result = url
+                                    break
                             if result == '':
                                 print('[+]成功获得包含番号的url，暂不包含dvd关键字！')
                                 result = url
                        if result == '' and 'dvd' in url:
                             print('[+]未能匹配到包含番号的结果，先获取靠后的包含dvd关键词的结果！')
                             result = url   
-                    if result != '':
-                        print('[!]未能完全匹配到包含番号的结果，返回满足基本条件的结果！')
-                        return result
-                    print('[!]未能匹配到标题和dvd关键词，将返回第一个候选结果！')                                                      
-                    return true_url_list[0]    
-            else:    
-                print('[!]未查询到商品结果，请查看刮削名是否正确，或者直接重命名文件') 
-                 
-        return 404
+                    if result == '':
+                        print('[!]未能匹配到包含番号和dvd关键词的结果，将返回第一个候选结果！')         
+                        result = true_url_list[0]
+        if result == '':
+            print('[!]未查询到商品结果，请查看刮削名是否正确，或者直接重命名文件') 
+        driver.close()
+        return result
     
     def getTrueHtmlFromFanza(self,url):
         '''
@@ -202,9 +221,8 @@ class Fanza(Parser):
         #time.sleep(1)
         #driver.find_element(By.XPATH,'/html/body/table/tbody/tr/td[2]/div[2]/div[1]/div/div[3]/p').click()
         #time.sleep(1)
-        driver.find_element(By.XPATH,'/html/body/div[4]/div[2]/div[2]/div[1]/div/div[3]/p').click()
+        driver.find_element(By.XPATH,'//p[contains(@class,"btn-close")]').click()
         ans = driver.page_source
-
 
         driver.close()
         return ans
@@ -288,7 +306,7 @@ class Fanza(Parser):
     def getDirector(self, htmltree):
         if "anime" not in self.detailurl:
             return self.getFanzaString('監督：')
-        elif self.getLabel(htmltree) == 'ばにぃうぉ～か～':
+        elif self.getLabel(htmltree) == 'ばにぃうぉ～か～' or self.getLabel(htmltree) == 'あんてきぬすっ':
             return '雷火剣'
         return ''
 
@@ -443,14 +461,15 @@ class Fanza(Parser):
           for url in tmp_images_list:
               if "dummy_ps.gif" not in url:
                   true_images_list.append(url)
+          for url in lazy_url_list:
+              if url not in true_images_list:
+                  true_images_list.append(url)
           
-          extrafanart_images = true_images_list + lazy_url_list
-          
-          if extrafanart_images == []:
+          if true_images_list == []:
               print("[!]刮削extrafanart失败")   
               return ''
           results = []
-          for img_url in extrafanart_images:
+          for img_url in true_images_list:
                     url_cuts = img_url.rsplit('-', 1)
                     results.append(url_cuts[0] + 'jp-' + url_cuts[1])
           

@@ -320,6 +320,7 @@ def movie_lists(source_folder, regexstr: str) -> typing.List[str]:
     nfo_skip_days = conf.nfo_skip_days()
     link_mode = conf.link_mode()
     file_type = conf.media_type().lower().split(",")
+    sub_type = conf.sub_rule()
     trailerRE = re.compile(r'-trailer\.', re.IGNORECASE)
     cliRE = None
     if isinstance(regexstr, str) and len(regexstr):
@@ -354,8 +355,11 @@ def movie_lists(source_folder, regexstr: str) -> typing.List[str]:
         if not full_name.is_file():
             continue
         if not full_name.suffix.lower() in file_type:
-            print('[!]自动删除不是视频的文件，如需保留，请声明')
-            os.remove(full_name)
+            if not full_name.suffix.lower() in sub_type:
+                print('[!]自动删除不是视频的文件，如需保留，请声明')
+                os.remove(full_name)
+            else:
+                print('[!]是字幕文件，不删除')
             continue
         absf = str(full_name)
         if absf in failed_set:
@@ -368,8 +372,8 @@ def movie_lists(source_folder, regexstr: str) -> typing.List[str]:
             continue  # 模式不等于3下跳过软连接和未配置硬链接刮削
         # 调试用0字节样本允许通过，去除小于50MB的广告'苍老师强力推荐.mp4'(102.2MB)'黑道总裁.mp4'(98.4MB)'有趣的妹子激情表演.MP4'(95MB)'有趣的臺灣妹妹直播.mp4'(15.1MB)
         movie_size = 0 if is_sym else full_name.stat().st_size  # 同上 符号链接不取stat()及st_size，直接赋0跳过小视频检测
-        if 1 <= movie_size < 52428800:  # 1024*1024*50=125829120
-             print('[!]搜索到小文件，已删除')
+        if 1 <= movie_size < 52428800 and full_name.suffix.lower() not in sub_type:  # 1024*1024*50=125829120
+             print('[!]搜索到小文件且不是字幕文件，删除')
              os.remove(full_name)
              continue
         if cliRE and not cliRE.search(absf) or trailerRE.search(full_name.name):

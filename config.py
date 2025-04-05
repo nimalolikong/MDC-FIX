@@ -590,8 +590,8 @@ class IniProxy():
 
     enable = False
     address = ""
-    timeout = 5
-    retry = 3
+    timeout = 30
+    retry = 5
     proxytype = "socks5"
 
     def __init__(self, switch, address, timeout, retry, proxytype) -> None:

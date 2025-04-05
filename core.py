@@ -277,7 +277,7 @@ def extrafanart_download_threadpool(url_list, save_dir, number, json_data=None):
   
     dn_list = []
     for i, url in enumerate(url_list, start=1):
-        jpg_fullpath = extrafanart_dir / f'extrafanart-{i}.jpg'
+        jpg_fullpath = extrafanart_dir / f'extrafanart-{i:02d}.jpg'
         if download_only_missing_images and not file_not_exist_or_empty(jpg_fullpath):
             continue
         dn_list.append((url, jpg_fullpath))
@@ -573,13 +573,14 @@ def add_mark(poster_path, thumb_path, cn_sub, leak, uncensored, hack, _4k, iso) 
 
 
 def add_mark_thread(pic_path, cn_sub, leak, uncensored, hack, _4k, iso):
+    return
     size = 9
     img_pic = Image.open(pic_path)
     # 获取自定义位置，取余配合pos达到顺时针添加的效果
     # 左上 0, 右上 1, 右下 2， 左下 3
     count = config.getInstance().watermark_type()
     if cn_sub:
-        add_to_pic(pic_path, img_pic, size, count, 1)  # 添加
+        #add_to_pic(pic_path, img_pic, size, count, 1)  # 添加
         count = (count + 1) % 4
     if leak:
         add_to_pic(pic_path, img_pic, size, count, 2)
@@ -630,7 +631,7 @@ def add_to_pic(pic_path, img_pic, size, count, mode):
     img_subt = Image.open(mark_pic_path)
     scroll_high = int(img_pic.height / size)
     scroll_wide = int(scroll_high * img_subt.width / img_subt.height)
-    img_subt = img_subt.resize((scroll_wide, scroll_high), Image.ANTIALIAS)
+    img_subt = img_subt.resize((scroll_wide, scroll_high), Image.LANCZOS)
     r, g, b, a = img_subt.split()  # 获取颜色通道，保持png的透明性
     # 封面四个角的位置
     pos = [
@@ -1224,9 +1225,9 @@ def findPreviewImagesFromJAVStore(number):
 
 def getPreviewImageUrlFromBlogJAV(url):
     """
-    blogjav图床抽风，暂时弃用
+    blogjav图床抽风使用cloudflare，且不再有缩略图，弃用
     """
-    #return ""
+    return ""
     p_html = get_html(url,json_headers= pic_headers, return_type="object")
     if p_html.status_code != 200:
        print("[!]无法加载blogJAV页面")
@@ -1260,10 +1261,13 @@ def getPreviewImageUrlFromJAVStore(url):
     rep_list = []
     for url in url_list:
         url = url.replace('.th', '')
+        print(url)
         rep_list.append(url)
     return rep_list[:1]
 
 def imageUrlFromBlogJAV(number):
+    # blogjav 疑似不再提供缩略图，弃用
+    return ""
     blog_page_url = findPreviewImagesFromBlogJAV(number)
     preview_url_1 = []
     if blog_page_url != "":

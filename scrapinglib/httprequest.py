@@ -5,7 +5,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from cloudscraper import create_scraper
-
+import time
 import config
 
 G_USER_AGENT = r'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.133 Safari/537.36'
@@ -25,6 +25,7 @@ def get(url: str, cookies=None, ua: str = None, extra_headers=None, return_type:
         headers.update(extra_headers)
     for i in range(retry):
         try:
+            time.sleep(3)
             result = requests.get(url, headers=headers, timeout=timeout, proxies=proxies,
                                   verify=verify, cookies=cookies)
             if return_type == "object":
@@ -58,6 +59,7 @@ def post(url: str, data: dict=None, files=None, cookies=None, ua: str=None, retu
 
     for i in range(retry):
         try:
+            
             result = requests.post(url, data=data, files=files, headers=headers, timeout=timeout, proxies=proxies,
                                    verify=verify, cookies=cookies)
             if return_type == "object":
