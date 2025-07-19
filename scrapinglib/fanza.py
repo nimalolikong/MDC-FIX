@@ -135,15 +135,14 @@ class Fanza(Parser):
                        
                        url = true_url_list[index]
                        print('[+]'+url)
-                       
-                       title = title_list[index].text
-                       print('[+]'+title)
+                       title_html_str = title_list[index].get_attribute('outerHTML')
+                       title = re.sub(r'<[^>]+>', '', title_html_str)
                        if 'anime' in url and 'mono' in url: 
                             if result == '':
-                               print(f'[+]成功得到页面url,但暂未未匹配到标题名:  {url}')
+                               print(f'[+]成功得到页面url,且包括anime关键词，先缓存url作为备选！url:{url}')
                                result = url
-                            print(f'[+]商品标题{title}')
-                            print(f'[+]待匹配标题{temp_num}')
+                            print(f'[+]商品标题:{title}')
+                            print(f'[+]待匹配标题:{temp_num}')
                             
                             if temp_num in title and '限定版' not in title:
                                 print(f'[+]已匹配到标题，URL：{url}')
@@ -159,7 +158,8 @@ class Fanza(Parser):
                        index -= 1
                        
                        url = true_url_list[index]
-                       title = title_list[index].text
+                       title_html_str = title_list[index].get_attribute('outerHTML')
+                       title = re.sub(r'<[^>]+>', '', title_html_str)
 
                        if f_number in url and 'h_' not in url: 
                             if 'dvd' in url :
@@ -192,6 +192,9 @@ class Fanza(Parser):
         oprofile = webdriver.FirefoxOptions()
         oprofile.accept_insecure_certs = True
         oprofile.page_load_strategy = 'eager'
+        oprofile.add_argument('--headless')
+        oprofile.add_argument('--disable-gpu')
+        oprofile.add_argument('--window-size=1920x1080')
         oprofile.set_preference("network.proxy.type", 1)
         oprofile.set_preference("network.proxy.http", "127.0.0.1")
         oprofile.set_preference("network.proxy.http_port", 7890)
