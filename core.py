@@ -1190,7 +1190,7 @@ def findPreviewImagesFromBlogJAV(number):
 
 def findPreviewImagesFromJAVStore(number):
     '''
-    处理-cd后缀
+    处理-cd后缀 待增加memojav替换blogjav
     '''
     num = getTrueNum(number)
     url = f'https://javstore.net/search/{num}.html'

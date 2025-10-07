@@ -362,6 +362,8 @@ class Fanza(Parser):
             ret = "King Bee"
         if ret == "Pink Pineapple":
             ret = "ピンクパイナップル"
+        if ret == "nur edel":
+            ret = "nur"
         return ret
 
 
