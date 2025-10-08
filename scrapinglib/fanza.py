@@ -219,7 +219,7 @@ class Fanza(Parser):
                         result = true_url_list[0]
         if result == '':
             print('[!]未查询到商品结果，请查看刮削名是否正确，或者直接重命名文件') 
-        driver.close()
+        driver.quit()
         return result
     
     def getTrueHtmlFromFanza(self,url):
@@ -257,7 +257,7 @@ class Fanza(Parser):
 
         ans = driver.page_source
 
-        driver.close()
+        driver.quit()
         return ans
     def getAnimeFlag(self):
             
