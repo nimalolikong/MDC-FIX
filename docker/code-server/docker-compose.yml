@@ -1,0 +1,30 @@
+services:
+  code-server:
+    build: .
+    image: code-server-for-selenium-firefox:latest
+    container_name: selenium-firefox-server
+    # 与官方 docker run -u "$(id -u):$(id -g)" 等价：在启动前在宿主机导出 UID/GID
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      # 官方镜像示例里有 DOCKER_USER，你也可以传入
+      - DOCKER_USER=coder
+      # 设置 code-server 登录密码（强烈建议）
+      - PASSWORD=your_password_here
+      # 使 code-server 打开指定工作目录
+      - DEFAULT_WORKSPACE=/home/coder/project
+
+      # 给 Selenium / 脚本使用的 firefox / geckodriver 路径（镜像中我们安装到常见位置）
+      - FIREFOX_BINARY=/usr/bin/firefox
+      - GECKODRIVER_PATH=/usr/bin/geckodriver
+
+    # 与官方 docker run 的端口绑定（官方示例绑定到本机回环地址 127.0.0.1:8080）
+    ports:
+      - "8080:8080"
+    # 卷映射：映射 code-server 的配置和工作目录，根据需求映射
+    volumes:
+      - ../.local:/home/coder/.local
+      - ../.config:/home/coder/.config
+      - ../../Movie_Data_Capture-6.6.7:/home/coder/project
+      - ../resource:/tmp/resource
+
+    restart: unless-stopped

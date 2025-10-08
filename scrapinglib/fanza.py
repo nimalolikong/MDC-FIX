@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import os
+import platform
 import re
 from lxml import etree
 from urllib.parse import urlencode
@@ -9,8 +11,58 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import time
 from urllib.parse import  quote
+
+import config
+
+# 添加win和基于selenuim/standalone-firefox容器的通用逻辑(完整linux如ubuntu待测)
+
+def _ensure_executable(path):
+    """在 Linux 上确保文件有执行权限（静默失败）"""
+    try:
+        if path and os.path.exists(path) and os.name != 'nt':
+            st = os.stat(path)
+            os.chmod(path, st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    except Exception:
+        pass
+
+def _default_paths():
+    """返回 (firefox_binary, geckodriver_path) windows为项目相对目录，
+        docker为根据镜像dockerfile来，firefox-esr默认放在/usr/bin/firefox
+        geckodriver根据dockerfile下载民工默认放在/usr/bin/geckodriver"""
+    sys = platform.system().lower()
+    if sys.startswith('win'):
+        # Windows 示例（portable）
+        return r"firefox_portable\firefox.exe", r"geckodriver.exe"
+    return "/usr/bin/firefox","/usr/bin/geckodriver"
+
+def _get_firefox_webdriver():
+    """获取 Firefox webdriver，根据操作系统选择合适的二进制文件和驱动"""
+
+    firefox_bin, gecko_path =_default_paths()
+    _ensure_executable(gecko_path)
+    config_proxy_ip = config.getInstance().proxy().proxy_ip
+    config_proxy_port = config.getInstance().proxy().proxy_port
+    
+    oprofile = webdriver.FirefoxOptions()
+    oprofile.accept_insecure_certs = True
+    oprofile.page_load_strategy = 'eager'
+    oprofile.add_argument('--headless')
+    oprofile.add_argument('--disable-gpu')
+    oprofile.set_preference("network.proxy.type", 1)
+    oprofile.set_preference("network.proxy.http", config_proxy_ip)
+    oprofile.set_preference("network.proxy.http_port", config_proxy_port)
+    oprofile.set_preference('network.proxy.socks', config_proxy_ip)
+    oprofile.set_preference('network.proxy.socks_port', config_proxy_port)
+    oprofile.set_preference('network.proxy.socks_remote_dns', False)
+    oprofile.set_preference("network.proxy.ssl", config_proxy_ip)
+    oprofile.set_preference("network.proxy.ssl_port", config_proxy_port)
+
+    oprofile.binary_location = firefox_bin
+    oservice = webdriver.FirefoxService(executable_path=gecko_path)
+    return webdriver.Firefox(options=oprofile,service=oservice)
+
+
 class Fanza(Parser):
     source = 'fanza'
     #在每个网站内判断是不是动画
@@ -63,7 +115,7 @@ class Fanza(Parser):
         self.htmlcode = self.getHtml(url)
         if self.htmlcode != 404 \
                 and 'Sorry! This content is not available in your region.' not in self.htmlcode:
-            if 'fn-popup' in self.htmlcode:
+            if 'fn-popup' in self.htmlcode or 'PopupBanner'in self.htmlcode:
                 self.htmlcode = self.getTrueHtmlFromFanza(url)
             self.htmltree = etree.HTML(self.htmlcode)
             if self.htmltree is not None:
@@ -87,23 +139,7 @@ class Fanza(Parser):
         page_url = 'https://www.dmm.co.jp/search/=/searchstr='+search_number + '/limit=30/sort=date'
         search_url = "https://www.dmm.co.jp/age_check/=/declared=yes/?"+ urlencode({"rurl": page_url})
         print('[+]搜索页面URL：'+search_url)
-        oprofile = webdriver.FirefoxOptions()
-        oprofile.accept_insecure_certs = True
-        oprofile.page_load_strategy = 'eager'
-        oprofile.binary_location = "firefox_portable/firefox.exe"
-        oprofile.add_argument('--headless')
-        oprofile.add_argument('--disable-gpu')
-        oprofile.add_argument('--window-size=1920x1080')
-        oprofile.set_preference("network.proxy.type", 1)
-        oprofile.set_preference("network.proxy.http", "127.0.0.1")
-        oprofile.set_preference("network.proxy.http_port", 7890)
-        oprofile.set_preference('network.proxy.socks', '127.0.0.1')
-        oprofile.set_preference('network.proxy.socks_port', 7890)
-        oprofile.set_preference('network.proxy.socks_remote_dns', False)
-        oprofile.set_preference("network.proxy.ssl", "127.0.0.1")
-        oprofile.set_preference("network.proxy.ssl_port", 7890)
-        oservice = webdriver.FirefoxService(executable_path="geckodriver.exe")
-        driver = webdriver.Firefox(options=oprofile,service=oservice)
+        driver = _get_firefox_webdriver()
         driver.get(search_url)
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '//div[contains(@class, "mx-3") and contains(@class, "mt-1.5")]/a[2]')))
         '''
@@ -191,23 +227,6 @@ class Fanza(Parser):
         得到在fanza打广告期间正确html地址
         '''
         ans = url
-        oprofile = webdriver.FirefoxOptions()
-        oprofile.accept_insecure_certs = True
-        oprofile.page_load_strategy = 'eager'
-        oprofile.add_argument('--headless')
-        oprofile.add_argument('--disable-gpu')
-        oprofile.add_argument('--window-size=1920x1080')
-        oprofile.set_preference("network.proxy.type", 1)
-        oprofile.set_preference("network.proxy.http", "127.0.0.1")
-        oprofile.set_preference("network.proxy.http_port", 7890)
-        oprofile.set_preference('network.proxy.socks', '127.0.0.1')
-        oprofile.set_preference('network.proxy.socks_port', 7890)
-        oprofile.set_preference('network.proxy.socks_remote_dns', False)
-        oprofile.set_preference("network.proxy.ssl", "127.0.0.1")
-        oprofile.set_preference("network.proxy.ssl_port", 7890)
-        oprofile.binary_location = "firefox_portable/firefox.exe"
-        oservice = webdriver.FirefoxService(executable_path="geckodriver.exe")
-        driver = webdriver.Firefox(options=oprofile,service=oservice)
         """"
         options = ChromeOptions()
         options.add_argument('--ignore-certificate-errors')
@@ -224,11 +243,18 @@ class Fanza(Parser):
         '''
         driver = webdriver.Chrome(options=options)
         """
+        driver = _get_firefox_webdriver()
         driver.get(url)
-        #time.sleep(1)
-        #driver.find_element(By.XPATH,'/html/body/table/tbody/tr/td[2]/div[2]/div[1]/div/div[3]/p').click()
-        #time.sleep(1)
-        driver.find_element(By.XPATH,'//p[contains(@class,"btn-close")]').click()
+
+        # 尝试关闭弹窗
+        close_btn = driver.find_element(By.XPATH,'//p[contains(@class,"btn-close")]')
+        if close_btn == None:
+            close_btn = driver.find_element(By.XPATH,'//a[contains(@class,"campaignPopupBanner__closeButton")]')
+        close_btn.click()
+        # 等待页面加载完成
+        driver.implicitly_wait(1)
+        
+
         ans = driver.page_source
 
         driver.close()
@@ -241,6 +267,7 @@ class Fanza(Parser):
         
     def getAnimeNum(self,htmltree):
         return self.getFanzaString('品番：')
+
     def getNum(self, htmltree):
         # for some old page, the input number does not match the page
         # for example, the url will be cid=test012

@@ -19,6 +19,18 @@ def getInstance():
         return G_conf_override[0]
     return Config()
 
+def running_in_docker():
+    # 常见容器判定方法（/.dockerenv 或 /proc/1/cgroup 包含 'docker'/'kubepods'）
+    try:
+        if os.path.exists('/.dockerenv') or os.path.exists('/.containerenv'):
+            return True
+        with open('/proc/1/cgroup', 'rt') as f:
+            content = f.read()
+            if 'docker' in content or 'kubepods' in content or 'container' in content:
+                return True
+    except Exception:
+        pass
+    return False
 
 class Config:
     def __init__(self, path: str = "config.ini"):
@@ -169,12 +181,18 @@ class Config:
             self._exit("common:main_mode")
 
     def source_folder(self) -> str:
+        if os.name != 'nt' and running_in_docker():
+            return self.conf.get("common", "docker_source_folder").replace("\\\\", "/").replace("\\", "/")
         return self.conf.get("common", "source_folder").replace("\\\\", "/").replace("\\", "/")
 
     def failed_folder(self) -> str:
+        if os.name != 'nt' and running_in_docker():
+            return self.conf.get("common", "docker_failed_output_folder").replace("\\\\", "/").replace("\\", "/")
         return self.conf.get("common", "failed_output_folder").replace("\\\\", "/").replace("\\", "/")
 
     def success_folder(self) -> str:
+        if os.name != 'nt' and running_in_docker():
+            return self.conf.get("common", "docker_success_output_folder").replace("\\\\", "/").replace("\\", "/")
         return self.conf.get("common", "success_output_folder").replace("\\\\", "/").replace("\\", "/")
 
     def actor_gender(self) -> str:
@@ -304,11 +322,13 @@ class Config:
         try:
             sec = "proxy"
             switch = self.conf.get(sec, "switch")
-            proxy = self.conf.get(sec, "proxy")
+            proxy_ip = self.conf.get(sec, "proxy_ip")
+            proxy_port = self.conf.getint(sec, "proxy_port")
+            proxy_address = proxy_ip + ":" + str(proxy_port)
             timeout = self.conf.getint(sec, "timeout")
             retry = self.conf.getint(sec, "retry")
             proxytype = self.conf.get(sec, "type")
-            iniProxy = IniProxy(switch, proxy, timeout, retry, proxytype)
+            iniProxy = IniProxy(switch, proxy_ip, proxy_port, proxy_address, timeout, retry, proxytype)
             return iniProxy
         except ValueError:
             self._exit("common")
@@ -589,17 +609,21 @@ class IniProxy():
     SUPPORT_PROXY_TYPE = ("http", "socks5", "socks5h")
 
     enable = False
-    address = ""
+    proxy_ip = 7890
+    proxy_port = ""
+    proxy_address = ""
     timeout = 30
     retry = 5
     proxytype = "socks5"
 
-    def __init__(self, switch, address, timeout, retry, proxytype) -> None:
+    def __init__(self, switch, proxy_ip, proxy_port, proxy_address, timeout, retry, proxytype) -> None:
         """ Initial Proxy from .ini
         """
         if switch == '1' or switch == 1:
             self.enable = True
-        self.address = address
+        self.proxy_ip = proxy_ip
+        self.proxy_port = proxy_port
+        self.proxy_address = proxy_address
         self.timeout = timeout
         self.retry = retry
         self.proxytype = proxytype
@@ -609,12 +633,12 @@ class IniProxy():
         获得代理参数，默认http代理
         get proxy params, use http proxy for default
         """
-        if self.address:
+        if self.proxy_address:
             if self.proxytype in self.SUPPORT_PROXY_TYPE:
-                proxies = {"http": self.proxytype + "://" + self.address,
-                           "https": self.proxytype + "://" + self.address}
+                proxies = {"http": self.proxytype + "://" + self.proxy_address,
+                           "https": self.proxytype + "://" + self.proxy_address}
             else:
-                proxies = {"http": "http://" + self.address, "https": "https://" + self.address}
+                proxies = {"http": "http://" + self.proxy_address, "https": "https://" + self.proxy_address}
         else:
             proxies = {}
 
