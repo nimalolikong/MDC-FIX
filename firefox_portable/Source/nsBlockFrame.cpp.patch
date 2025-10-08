@@ -1,0 +1,121 @@
+diff --git a/layout/generic/nsBlockFrame.cpp b/layout/generic/nsBlockFrame.cpp
+--- a/layout/generic/nsBlockFrame.cpp
++++ b/layout/generic/nsBlockFrame.cpp
+@@ -4,16 +4,20 @@
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ /*
+  * rendering object for CSS display:block, inline-block, and list-item
+  * boxes, also used for various anonymous boxes
+  */
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++#include <xmmintrin.h>
++#endif
++
+ #include "nsBlockFrame.h"
+ 
+ #include <inttypes.h>
+ 
+ #include <algorithm>
+ 
+ #include "BlockReflowState.h"
+ #include "CounterStyleManager.h"
+@@ -2716,17 +2720,25 @@ void nsBlockFrame::UnionChildOverflow(Ov
+       if (auto lineFrameBounds = GetLineFrameInFlowBounds(
+               line, *lineFrame, considerPositiveMarginsForInFlowChildBounds)) {
+         inFlowChildBounds = inFlowChildBounds.UnionEdges(*lineFrameBounds);
+       }
+     }
+ 
+     // Consider the overflow areas of the floats attached to the line as well
+     if (line.HasFloats()) {
+-      for (nsIFrame* f : line.Floats()) {
++      const auto& lineFloats = line.Floats();
++      for (auto it = lineFloats.begin(); it != lineFloats.end();) {
++        auto f = *it;
++        ++it;
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++        if (it != lineFloats.end()) {
++          _mm_prefetch((char *)(*it)->StyleDisplay(), _MM_HINT_NTA);
++        }
++#endif
+         ConsiderChildOverflow(lineAreas, f, aAsIfScrolled);
+         if (inkOverflowOnly || !isScrolled) {
+           continue;
+         }
+         auto rect = GetNormalMarginRect(
+             *f, considerPositiveMarginsForInFlowChildBounds);
+         inFlowChildBounds = inFlowChildBounds.UnionEdges(rect);
+       }
+@@ -7843,16 +7855,20 @@ static void DisplayLine(nsDisplayListBui
+   if (nsBlockFrame::gLamePaintMetrics) {
+     aDrawnLines++;
+   }
+   const bool intersect =
+       aLine->InkOverflowRect().Intersects(aBuilder->GetDirtyRect());
+   DebugOutputDrawLine(aDepth, aLine.get(), intersect);
+ #endif
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++  _mm_prefetch((char *)aLine->mFirstChild, _MM_HINT_NTA);
++#endif
++
+   // Collect our line's display items in a temporary nsDisplayListCollection,
+   // so that we can apply any "text-overflow" clipping to the entire collection
+   // without affecting previous lines.
+   nsDisplayListCollection collection(aBuilder);
+ 
+   // Block-level child backgrounds go on the blockBorderBackgrounds list ...
+   // Inline-level child backgrounds go on the regular child content list.
+   nsDisplayListSet childLists(
+@@ -7862,16 +7878,19 @@ static void DisplayLine(nsDisplayListBui
+   auto flags =
+       aLineInLine
+           ? nsIFrame::DisplayChildFlags(nsIFrame::DisplayChildFlag::Inline)
+           : nsIFrame::DisplayChildFlags();
+ 
+   nsIFrame* kid = aLine->mFirstChild;
+   int32_t n = aLine->GetChildCount();
+   while (--n >= 0) {
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++    _mm_prefetch((char *)kid->GetNextSibling(), _MM_HINT_T0);
++#endif
+     aFrame->BuildDisplayListForChild(aBuilder, kid, childLists, flags);
+     kid = kid->GetNextSibling();
+   }
+ 
+   if (aFrame->HasLineClampEllipsisDescendant() && !aLineInLine) {
+     if (nsBlockFrame* f = GetAsLineClampDescendant(aLine->mFirstChild)) {
+       if (f->HasLineClampEllipsis() || f->HasLineClampEllipsisDescendant()) {
+         aFoundLineClamp = true;
+@@ -7915,21 +7934,28 @@ void nsBlockFrame::BuildDisplayList(nsDi
+   // We don't have a float manager here.
+ 
+   DisplayBorderBackgroundOutline(aBuilder, aLists);
+ 
+   if (GetPrevInFlow()) {
+     DisplayOverflowContainers(aBuilder, aLists);
+     for (nsIFrame* f : GetChildList(FrameChildListID::Float)) {
+       if (f->HasAnyStateBits(NS_FRAME_IS_PUSHED_FLOAT)) {
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++        _mm_prefetch((char *)f->GetNextSibling(), _MM_HINT_T0);
++#endif
+         BuildDisplayListForChild(aBuilder, f, aLists);
+       }
+     }
+   }
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++  _mm_prefetch((char *)StyleTextReset(), _MM_HINT_T0);
++#endif
++
+   aBuilder->MarkFramesForDisplayList(this,
+                                      GetChildList(FrameChildListID::Float));
+ 
+   if (nsIFrame* outsideMarker = GetOutsideMarker()) {
+     // Display outside ::marker manually.
+     BuildDisplayListForChild(aBuilder, outsideMarker, aLists);
+   }
+ 

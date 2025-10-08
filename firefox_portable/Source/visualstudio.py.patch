@@ -1,0 +1,142 @@
+diff --git a/python/mozbuild/mozbuild/backend/visualstudio.py b/python/mozbuild/mozbuild/backend/visualstudio.py
+--- a/python/mozbuild/mozbuild/backend/visualstudio.py
++++ b/python/mozbuild/mozbuild/backend/visualstudio.py
+@@ -80,16 +80,26 @@ class VisualStudioBackend(CommonBackend)
+ 
+         self._paths_to_sources = {}
+         self._paths_to_includes = {}
+         self._paths_to_defines = {}
+         self._paths_to_configs = {}
+         self._libs_to_paths = {}
+         self._progs_to_paths = {}
+ 
++        target_cpu = self.environment.substs["TARGET_CPU"]
++        if target_cpu == "x86_64":
++            self._vstarget = "x64"
++        elif target_cpu == "x86":
++            self._vstarget = "Win32"
++        elif target_cpu == "aarch64":
++            self._vstarget = "ARM64"
++        else:
++            error("Unsupported TARGET_CPU value: %s" % target_cpu)
++
+     def summary(self):
+         return ExecutionSummary(
+             "VisualStudio backend executed in {execution_time:.2f}s\n"
+             "Generated Visual Studio solution at {path:s}",
+             execution_time=self._execution_time,
+             path=os.path.join(self._out_dir, "mozilla.sln"),
+         )
+ 
+@@ -350,30 +360,30 @@ class VisualStudioBackend(CommonBackend)
+         library_id = write_container("Libraries")
+         target_id = write_container("Build Targets")
+         binary_id = write_container("Binaries")
+ 
+         fh.write("Global\r\n")
+ 
+         # Make every project a member of our one configuration.
+         fh.write("\tGlobalSection(SolutionConfigurationPlatforms) = preSolution\r\n")
+-        fh.write("\t\tBuild|Win32 = Build|Win32\r\n")
++        fh.write("\t\tBuild|%s = Build|%s\r\n" % (self._vstarget, self._vstarget))
+         fh.write("\tEndGlobalSection\r\n")
+ 
+         # Set every project's active configuration to the one configuration and
+         # set up the default build project.
+         fh.write("\tGlobalSection(ProjectConfigurationPlatforms) = postSolution\r\n")
+         for name, project in sorted(projects.items()):
+-            fh.write("\t\t{%s}.Build|Win32.ActiveCfg = Build|Win32\r\n" % project[0])
++            fh.write("\t\t{%s}.Build|%s.ActiveCfg = Build|%s\r\n" % (project[0], self._vstarget, self._vstarget))
+ 
+             # Only build the full build target by default.
+             # It's important we don't write multiple entries here because they
+             # conflict!
+             if name == "target_full":
+-                fh.write("\t\t{%s}.Build|Win32.Build.0 = Build|Win32\r\n" % project[0])
++                fh.write("\t\t{%s}.Build|%s.Build.0 = Build|%s\r\n" % (project[0], self._vstarget, self._vstarget))
+ 
+         fh.write("\tEndGlobalSection\r\n")
+ 
+         fh.write("\tGlobalSection(SolutionProperties) = preSolution\r\n")
+         fh.write("\t\tHideSolutionNode = FALSE\r\n")
+         fh.write("\tEndGlobalSection\r\n")
+ 
+         # Associate projects with containers.
+@@ -557,30 +567,31 @@ class VisualStudioBackend(CommonBackend)
+         )
+ 
+     def _write_vs_project(self, out_dir, basename, name, **kwargs):
+         root = "%s.vcxproj" % basename
+         project_id = get_id(basename)
+ 
+         with self._write_file(os.path.join(out_dir, root), readmode="rb") as fh:
+             project_id, name = VisualStudioBackend.write_vs_project(
+-                fh, self._version, project_id, name, **kwargs
++                self, fh, self._version, project_id, name, **kwargs
+             )
+ 
+         with self._write_file(
+             os.path.join(out_dir, "%s.user" % root), readmode="rb"
+         ) as fh:
+             fh.write('<?xml version="1.0" encoding="utf-8"?>\r\n')
+             fh.write('<Project ToolsVersion="4.0" xmlns="%s">\r\n' % MSBUILD_NAMESPACE)
+             fh.write("</Project>\r\n")
+ 
+         return project_id
+ 
+     @staticmethod
+     def write_vs_project(
++        self,
+         fh,
+         version,
+         project_id,
+         name,
+         includes=[],
+         forced_includes=[],
+         defines=[],
+         build_command=None,
+@@ -596,23 +607,23 @@ class VisualStudioBackend(CommonBackend)
+         project.setAttribute("DefaultTargets", "Build")
+         project.setAttribute("ToolsVersion", "4.0")
+         project.setAttribute("xmlns", MSBUILD_NAMESPACE)
+ 
+         ig = project.appendChild(doc.createElement("ItemGroup"))
+         ig.setAttribute("Label", "ProjectConfigurations")
+ 
+         pc = ig.appendChild(doc.createElement("ProjectConfiguration"))
+-        pc.setAttribute("Include", "Build|Win32")
++        pc.setAttribute("Include", "Build|%s" % self._vstarget)
+ 
+         c = pc.appendChild(doc.createElement("Configuration"))
+         c.appendChild(doc.createTextNode("Build"))
+ 
+         p = pc.appendChild(doc.createElement("Platform"))
+-        p.appendChild(doc.createTextNode("Win32"))
++        p.appendChild(doc.createTextNode("%s" % self._vstarget))
+ 
+         pg = project.appendChild(doc.createElement("PropertyGroup"))
+         pg.setAttribute("Label", "Globals")
+ 
+         n = pg.appendChild(doc.createElement("ProjectName"))
+         n.appendChild(doc.createTextNode(name))
+ 
+         k = pg.appendChild(doc.createElement("Keyword"))
+@@ -646,17 +657,17 @@ class VisualStudioBackend(CommonBackend)
+         i.setAttribute("Project", "mozilla.props")
+ 
+         pg = project.appendChild(doc.createElement("PropertyGroup"))
+         pg.setAttribute("Label", "Configuration")
+         ct = pg.appendChild(doc.createElement("ConfigurationType"))
+         ct.appendChild(doc.createTextNode("Makefile"))
+ 
+         pg = project.appendChild(doc.createElement("PropertyGroup"))
+-        pg.setAttribute("Condition", "'$(Configuration)|$(Platform)'=='Build|Win32'")
++        pg.setAttribute("Condition", "'$(Configuration)|$(Platform)'=='Build|%s'" % self._vstarget)
+ 
+         if build_command:
+             n = pg.appendChild(doc.createElement("NMakeBuildCommandLine"))
+             n.appendChild(doc.createTextNode(build_command))
+ 
+         if clean_command:
+             n = pg.appendChild(doc.createElement("NMakeCleanCommandLine"))
+             n.appendChild(doc.createTextNode(clean_command))

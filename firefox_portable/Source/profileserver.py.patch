@@ -1,0 +1,132 @@
+diff --git a/build/pgo/profileserver.py b/build/pgo/profileserver.py
+--- a/build/pgo/profileserver.py
++++ b/build/pgo/profileserver.py
+@@ -3,16 +3,17 @@
+ # This Source Code Form is subject to the terms of the Mozilla Public
+ # License, v. 2.0. If a copy of the MPL was not distributed with this
+ # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ 
+ import glob
+ import os
+ import subprocess
+ import sys
++from pathlib import Path
+ 
+ import mozcrash
+ from mozbuild.base import BinaryNotFoundException, MozbuildObject
+ from mozfile import TemporaryDirectory, json
+ from mozhttpd import MozHttpd
+ from mozprofile import FirefoxProfile, Preferences
+ from mozprofile.permissions import ServerLocations
+ from mozrunner import CLI, FirefoxRunner
+@@ -133,29 +134,45 @@ if __name__ == "__main__":
+             locations=locations,
+         )
+ 
+         env = os.environ.copy()
+         env["MOZ_CRASHREPORTER_NO_REPORT"] = "1"
+         env["MOZ_CRASHREPORTER_SHUTDOWN"] = "1"
+         env["XPCOM_DEBUG_BREAK"] = "warn"
+ 
++        # Re-enable sandboxing to make writing profiling data actually work
++        # Bug 1553850 does not seem to have fixed this as of April 9, 2025?
++        env["MOZ_DISABLE_CONTENT_SANDBOX"] = "1"
++        env["MOZ_DISABLE_RDD_SANDBOX"] = "1"
++        env["MOZ_DISABLE_SOCKET_PROCESS_SANDBOX"] = "1"
++        env["MOZ_DISABLE_GPU_SANDBOX"] = "1"
++        env["MOZ_DISABLE_GMP_SANDBOX"] = "1"
++        env["MOZ_DISABLE_VR_SANDBOX"] = "1"
++        env["MOZ_DISABLE_UTILITY_SANDBOX"] = "1"
++
+         # Ensure different pids write to different files
+         # Use absolute path to ensure that Sandbox computes the correct permissions
+         env["LLVM_PROFILE_FILE"] = os.path.join(
+-            os.getcwd(), "default_%p_random_%m.profraw"
++            os.getcwd(), "default_%p_random_%9m.profraw"
+         )
+ 
+         # Write to an output file if we're running in automation
+         process_args = {"universal_newlines": True}
+         if "UPLOAD_PATH" in env:
+             process_args["logfile"] = os.path.join(
+                 env["UPLOAD_PATH"], "profile-run-1.log"
+             )
+ 
++        if "TETE009_DLL_DIR" in env:
++            env["PATH"] = (
++                os.path.normpath(env["TETE009_DLL_DIR"]) + os.pathsep +
++                env.get("PATH", "")
++            )
++
+         # Run Firefox a first time to initialize its profile
+         runner = FirefoxRunner(
+             profile=profile,
+             binary=binary,
+             cmdargs=["data:text/html,<script>Quitter.quit()</script>"],
+             env=env,
+             process_args=process_args,
+         )
+@@ -233,20 +250,26 @@ if __name__ == "__main__":
+             profraw_files = glob.glob("*.profraw")
+             if not profraw_files:
+                 print(
+                     "Could not find profraw files in the current directory: %s"
+                     % os.getcwd()
+                 )
+                 sys.exit(1)
+ 
+-            merged_profdata = "merged.profdata"
++            is_cs_profile_generate = env.get("MOZ_CS_PROFILE_GENERATE")
++            default_merged_profdata = "merged.profdata"
++            merged_profdata = (
++                "merged_cs.profdata" if is_cs_profile_generate
++                else default_merged_profdata
++            )
+             merge_cmd = [
+                 llvm_profdata,
+                 "merge",
++                "--failure-mode=all",
+                 "-o",
+                 merged_profdata,
+             ] + profraw_files
+             rc = subprocess.call(merge_cmd)
+             if rc != 0:
+                 print("INFRA-ERROR: Failed to merge profile data. Corrupt profile?")
+                 # exit with TBPL_RETRY
+                 sys.exit(4)
+@@ -254,8 +277,35 @@ if __name__ == "__main__":
+             # llvm-profdata may fail while still exiting without an error.
+             if not os.path.isfile(merged_profdata):
+                 print(merged_profdata, "was not created", file=sys.stderr)
+                 sys.exit(1)
+ 
+             if os.path.getsize(merged_profdata) == 0:
+                 print(merged_profdata, "was created but it is empty", file=sys.stderr)
+                 sys.exit(1)
++
++            if is_cs_profile_generate:
++                ir_profdata_path = (
++                    Path.cwd().parent / "instrumented" / default_merged_profdata
++                ).resolve()
++                merge_cmd = [
++                    llvm_profdata,
++                    "merge",
++                    "-o",
++                    default_merged_profdata,
++                    ir_profdata_path,
++                    merged_profdata,
++                ]
++                rc = subprocess.call(merge_cmd)
++                if rc != 0:
++                    print("INFRA-ERROR: Failed to merge profile data. Corrupt profile?")
++                    # exit with TBPL_RETRY
++                    sys.exit(4)
++
++                # llvm-profdata may fail while still exiting without an error.
++                if not os.path.isfile(default_merged_profdata):
++                    print(default_merged_profdata, "was not created", file=sys.stderr)
++                    sys.exit(1)
++
++                if os.path.getsize(default_merged_profdata) == 0:
++                    print(default_merged_profdata, "was created but it is empty", file=sys.stderr)
++                    sys.exit(1)

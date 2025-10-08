@@ -1,0 +1,33 @@
+diff --git a/dom/base/Navigator.cpp b/dom/base/Navigator.cpp
+--- a/dom/base/Navigator.cpp
++++ b/dom/base/Navigator.cpp
+@@ -2291,16 +2291,29 @@ dom::PrivateAttribution* Navigator::Priv
+     mPrivateAttribution = new dom::PrivateAttribution(GetWindow()->AsGlobal());
+   }
+   return mPrivateAttribution;
+ }
+ 
+ /* static */
+ bool Navigator::Webdriver() {
+ #ifdef ENABLE_WEBDRIVER
++#if defined(TT_MEMUTIL)
++  // This feature is enabled in tete009 builds only during PGO profile data
++  // collection to render certain sites correctly.
++  // When tete009 build is controlled by Marionette,
++  // navigator.webdriver returns false if the TT_FAKE_WEBDRIVER environment
++  // variable is set.
++  // This feature is not intended for scraping.
++  static const bool fakeWebdriver = !!PR_GetEnv("TT_FAKE_WEBDRIVER");
++  if (fakeWebdriver) {
++    return false;
++  }
++#endif
++
+   nsCOMPtr<nsIMarionette> marionette = do_GetService(NS_MARIONETTE_CONTRACTID);
+   if (marionette) {
+     bool marionetteRunning = false;
+     marionette->GetRunning(&marionetteRunning);
+     if (marionetteRunning) {
+       return true;
+     }
+   }

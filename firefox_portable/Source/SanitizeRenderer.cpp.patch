@@ -1,0 +1,119 @@
+diff --git a/dom/canvas/SanitizeRenderer.cpp b/dom/canvas/SanitizeRenderer.cpp
+--- a/dom/canvas/SanitizeRenderer.cpp
++++ b/dom/canvas/SanitizeRenderer.cpp
+@@ -8,17 +8,17 @@
+ 
+ #include <functional>
+ #include <regex>
+ #include <string>
+ 
+ namespace mozilla {
+ namespace webgl {
+ 
+-static bool Contains(const std::string& str, const std::string& part) {
++static bool Contains(const std::string& str, const char* part) {
+   return str.find(part) != size_t(-1);
+ }
+ 
+ /**
+  * Narrow renderer string space down to representative replacements.
+  * E.g. "GeForce RTX 3090" => "GeForce GTX 980"
+  *
+  * For example strings:
+@@ -30,19 +30,19 @@ static std::optional<std::string> Choose
+   if (str.find("Apple") == 0) return "Apple M1";
+ 
+   std::smatch m;
+ 
+   // -
+   // AMD
+ 
+   {
+-    static const std::string RADEON_HD_3000 = "Radeon HD 3200 Graphics";
+-    static const std::string RADEON_HD_5850 = "Radeon HD 5850";
+-    static const std::string RADEON_R9_290 = "Radeon R9 200 Series";
++    const char* RADEON_HD_3000 = "Radeon HD 3200 Graphics";
++    const char* RADEON_HD_5850 = "Radeon HD 5850";
++    const char* RADEON_R9_290 = "Radeon R9 200 Series";
+     const auto& RADEON_D3D_FL10_1 = RADEON_HD_3000;
+ 
+     if (Contains(str, "REMBRANDT")) {  // Mobile 6xxx iGPUs
+       return RADEON_R9_290;
+     }
+     if (Contains(str, "RENOIR")) {  // Desktop 4xxxG iGPUs
+       return RADEON_R9_290;
+     }
+@@ -91,23 +91,23 @@ static std::optional<std::string> Choose
+     if (Contains(str, "AMD ") || Contains(str, "FirePro") ||
+         Contains(str, "Radeon")) {
+       return RADEON_D3D_FL10_1;
+     }
+   }
+ 
+   // -
+ 
+-  static const std::string GEFORCE_8800 = "GeForce 8800 GTX";
+-  static const std::string GEFORCE_480 = "GeForce GTX 480";
+-  static const std::string GEFORCE_980 = "GeForce GTX 980";
++  const char* GEFORCE_8800 = "GeForce 8800 GTX";
++  const char* GEFORCE_480 = "GeForce GTX 480";
++  const char* GEFORCE_980 = "GeForce GTX 980";
+ 
+   if (Contains(str, "NVIDIA") || Contains(str, "GeForce") ||
+       Contains(str, "Quadro")) {
+-    auto ret = std::invoke([&]() {
++    std::string ret = std::invoke([&]() {
+       static const std::regex kGeForce("GeForce.*?([0-9][0-9][0-9]+)");
+       if (std::regex_search(str, m, kGeForce)) {
+         const auto modelNum = stoul(m.str(1));
+         if (modelNum >= 8000) {
+           // Tesla+: D3D10.0, SM4.0
+           return GEFORCE_8800;
+         }
+         if (modelNum >= 900) {
+@@ -192,22 +192,22 @@ static std::optional<std::string> Choose
+     if (modelNum >= 0x120) return GEFORCE_980;
+     if (modelNum >= 0xC0) return GEFORCE_480;
+     return GEFORCE_8800;
+   }
+ 
+   // -
+ 
+   if (Contains(str, "Intel")) {
+-    static const std::string HD_GRAPHICS = "Intel(R) HD Graphics";
+-    static const std::string HD_GRAPHICS_400 = "Intel(R) HD Graphics 400";
+-    static const std::string INTEL_945GM = "Intel 945GM";
++    const char* HD_GRAPHICS = "Intel(R) HD Graphics";
++    const char* HD_GRAPHICS_400 = "Intel(R) HD Graphics 400";
++    const char* INTEL_945GM = "Intel 945GM";
+     // Pick A750 to split the performance difference, but err optimistically on
+     // the high end.
+-    static const std::string DGPU_ARC = "Intel(R) Arc(TM) A750 Graphics";
++    const char* DGPU_ARC = "Intel(R) Arc(TM) A750 Graphics";
+ 
+     if (Contains(str, "Intel(R) Arc(TM)")) {
+       return DGPU_ARC;
+     }
+ 
+     static const std::regex kIntelHD("Intel.*Graphics( P?([0-9][0-9][0-9]+))?");
+     if (std::regex_search(str, m, kIntelHD)) {
+       if (m.str(1).empty()) {
+@@ -276,17 +276,17 @@ static std::optional<std::string> Choose
+   }
+ 
+   if (Contains(str, "Vivante")) return "Vivante GC1000";
+   if (Contains(str, "VideoCore")) return "VideoCore IV HW";
+   if (Contains(str, "Tegra")) return "NVIDIA Tegra";
+ 
+   // -
+ 
+-  static const std::string D3D_WARP = "Microsoft Basic Render Driver";
++  const char* D3D_WARP = "Microsoft Basic Render Driver";
+   if (Contains(str, D3D_WARP)) return str;
+ 
+   return {};
+ }
+ 
+ // -
+ 
+ std::string SanitizeRenderer(const std::string& raw_renderer) {

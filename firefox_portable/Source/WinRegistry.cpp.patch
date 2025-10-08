@@ -1,0 +1,22 @@
+diff --git a/widget/windows/WinRegistry.cpp b/widget/windows/WinRegistry.cpp
+--- a/widget/windows/WinRegistry.cpp
++++ b/widget/windows/WinRegistry.cpp
+@@ -309,17 +309,16 @@ bool KeyWatcher::Register() {
+   HRESULT rv =
+       RegNotifyChangeKeyValue(mKey.RawKey(), /* bWatchSubtree = */ TRUE, flags,
+                               mEvent, /* fAsynchronous = */ TRUE);
+   return !NS_WARN_IF(FAILED(rv));
+ }
+ 
+ KeyWatcher::~KeyWatcher() {
+   if (mWaitObject) {
+-    UnregisterWait(mWaitObject);
+-    CloseHandle(mWaitObject);
++    UnregisterWaitEx(mWaitObject, INVALID_HANDLE_VALUE);
+   }
+   if (mEvent) {
+     CloseHandle(mEvent);
+   }
+ }
+ 
+ }  // namespace mozilla::widget::WinRegistry

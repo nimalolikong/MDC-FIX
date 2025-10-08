@@ -1,0 +1,84 @@
+diff --git a/xpcom/base/nsCycleCollector.cpp b/xpcom/base/nsCycleCollector.cpp
+--- a/xpcom/base/nsCycleCollector.cpp
++++ b/xpcom/base/nsCycleCollector.cpp
+@@ -137,16 +137,20 @@
+ // there should be no objects released from the scan-safe set during
+ // the scan.
+ //
+ // We *do* call |Root| and |Unroot| on every white object, on
+ // either side of the calls to |Unlink|. This keeps the set of white
+ // objects alive during the unlinking.
+ //
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++#include <xmmintrin.h>
++#endif
++
+ #if !defined(__MINGW32__)
+ #  ifdef WIN32
+ #    include <crtdbg.h>
+ #    include <errno.h>
+ #  endif
+ #endif
+ 
+ #include "base/process_util.h"
+@@ -976,41 +980,56 @@ struct nsPurpleBuffer {
+ 
+     uint32_t oldLength = mEntries.Length();
+     uint32_t keptLength = 0;
+     auto revIter = mEntries.IterFromLast();
+     auto iter = mEntries.Iter();
+     // After iteration this points to the first empty entry.
+     auto firstEmptyIter = mEntries.Iter();
+     auto iterFromLastEntry = mEntries.IterFromLast();
+-    for (; !iter.Done(); iter.Next()) {
++    for (; !iter.Done();) {
+       nsPurpleBufferEntry& e = iter.Get();
++      iter.Next();
+       if (e.mObject) {
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++        if (!iter.Done()) {
++          nsPurpleBufferEntry& eNext = iter.Get();
++          _mm_prefetch((char *)eNext.mRefCnt, _MM_HINT_NTA);
++          _mm_prefetch((char *)eNext.mObject, _MM_HINT_NTA);
++        }
++#endif
+         if (!aVisitor.Visit(*this, &e)) {
+           return;
+         }
+       }
+ 
+       // Visit call above may have cleared the entry, or the entry was empty
+       // already.
+       if (!e.mObject) {
+         // Try to find a non-empty entry from the end of the vector.
+-        for (; !revIter.Done(); revIter.Prev()) {
++        for (; !revIter.Done();) {
+           nsPurpleBufferEntry& otherEntry = revIter.Get();
+           if (&e == &otherEntry) {
+             break;
+           }
++          revIter.Prev();
+           if (otherEntry.mObject) {
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++            if (!revIter.Done()) {
++              nsPurpleBufferEntry& otherPrevEntry = revIter.Get();
++              _mm_prefetch((char *)otherPrevEntry.mRefCnt, _MM_HINT_NTA);
++              _mm_prefetch((char *)otherPrevEntry.mObject, _MM_HINT_NTA);
++            }
++#endif
+             if (!aVisitor.Visit(*this, &otherEntry)) {
+               return;
+             }
+             // Visit may have cleared otherEntry.
+             if (otherEntry.mObject) {
+               e.Swap(otherEntry);
+-              revIter.Prev();  // We've swapped this now empty entry.
+               break;
+             }
+           }
+         }
+       }
+ 
+       // Entry is non-empty even after the Visit call, ensure it is kept
+       // in mEntries.

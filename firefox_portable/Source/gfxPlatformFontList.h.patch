@@ -1,0 +1,44 @@
+diff --git a/gfx/thebes/gfxPlatformFontList.h b/gfx/thebes/gfxPlatformFontList.h
+--- a/gfx/thebes/gfxPlatformFontList.h
++++ b/gfx/thebes/gfxPlatformFontList.h
+@@ -652,35 +652,35 @@ class gfxPlatformFontList : public gfxFo
+   void Lock() MOZ_CAPABILITY_ACQUIRE(mLock) { mLock.Lock(); }
+   void Unlock() MOZ_CAPABILITY_RELEASE(mLock) { mLock.Unlock(); }
+ 
+   // This is only public because some external callers want to be able to
+   // assert about the locked status.
+   mutable mozilla::RecursiveMutex mLock;
+ 
+  protected:
+-  virtual nsTArray<std::pair<const char**, uint32_t>>
++  virtual nsTArray<std::pair<const char* const*, uint32_t>>
+   GetFilteredPlatformFontLists() = 0;
+ 
+   friend class mozilla::fontlist::FontList;
+   friend class InitOtherFamilyNamesForStylo;
+ 
+   template <size_t N>
+-  static bool FamilyInList(const nsACString& aName, const char* (&aList)[N]) {
++  static bool FamilyInList(const nsACString& aName, const char* const (&aList)[N]) {
+     return FamilyInList(aName, aList, N);
+   }
+-  static bool FamilyInList(const nsACString& aName, const char* aList[],
++  static bool FamilyInList(const nsACString& aName, const char* const aList[],
+                            size_t aCount);
+ 
+   // Check list is correctly sorted (in debug build only; no-op on release).
+   template <size_t N>
+-  static void CheckFamilyList(const char* (&aList)[N]) {
++  static void CheckFamilyList(const char* const (&aList)[N]) {
+     CheckFamilyList(aList, N);
+   }
+-  static void CheckFamilyList(const char* aList[], size_t aCount);
++  static void CheckFamilyList(const char* const aList[], size_t aCount);
+ 
+   class InitOtherFamilyNamesRunnable : public mozilla::CancelableRunnable {
+    public:
+     InitOtherFamilyNamesRunnable()
+         : CancelableRunnable(
+               "gfxPlatformFontList::InitOtherFamilyNamesRunnable"),
+           mIsCanceled(false) {}
+ 

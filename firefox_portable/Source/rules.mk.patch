@@ -1,0 +1,46 @@
+diff --git a/config/rules.mk b/config/rules.mk
+--- a/config/rules.mk
++++ b/config/rules.mk
+@@ -50,21 +50,23 @@ ifdef CPP_UNIT_TESTS
+ ifdef COMPILE_ENVIRONMENT
+ 
+ # Compile the tests to $(DIST)/bin.  Make lots of niceties available by default
+ # through TestHarness.h, by modifying the list of includes and the libs against
+ # which stuff links.
+ SIMPLE_PROGRAMS += $(CPP_UNIT_TESTS)
+ 
+ ifndef MOZ_PROFILE_GENERATE
++ifndef MOZ_CS_PROFILE_GENERATE
+ CPP_UNIT_TESTS_FILES = $(CPP_UNIT_TESTS)
+ CPP_UNIT_TESTS_DEST = $(DIST)/cppunittests
+ CPP_UNIT_TESTS_TARGET = target
+ INSTALL_TARGETS += CPP_UNIT_TESTS
+ endif
++endif
+ 
+ run-cppunittests::
+ 	@$(PYTHON3) $(MOZILLA_DIR)/testing/runcppunittests.py --xre-path=$(DIST)/bin --symbols-path=$(DIST)/crashreporter-symbols $(CPP_UNIT_TESTS)
+ 
+ cppunittests-remote:
+ 	$(PYTHON3) -u $(MOZILLA_DIR)/testing/remotecppunittests.py \
+ 		--xre-path=$(DEPTH)/dist/bin \
+ 		--localLib=$(DEPTH)/dist/$(MOZ_APP_NAME) \
+@@ -168,17 +170,17 @@ ifeq ($(HOST_OS_ARCH),WINNT)
+ HOST_PDBFILE=$(basename $(@F)).pdb
+ HOST_PDB_FLAG ?= -PDB:$(HOST_PDBFILE)
+ HOST_C_LDFLAGS += -DEBUG $(HOST_PDB_FLAG)
+ HOST_CXX_LDFLAGS += -DEBUG $(HOST_PDB_FLAG)
+ endif
+ 
+ # Don't build SIMPLE_PROGRAMS during the MOZ_PROFILE_GENERATE pass, and do not
+ # attempt to install them
+-ifdef MOZ_PROFILE_GENERATE
++ifneq (,$(MOZ_PROFILE_GENERATE)$(MOZ_CS_PROFILE_GENERATE))
+ $(foreach category,$(INSTALL_TARGETS),\
+   $(eval $(category)_FILES := $(foreach file,$($(category)_FILES),$(if $(filter $(SIMPLE_PROGRAMS),$(notdir $(file))),,$(file)))))
+ SIMPLE_PROGRAMS :=
+ endif
+ 
+ ifdef COMPILE_ENVIRONMENT
+ ifndef TARGETS
+ TARGETS			= $(LIBRARY) $(SHARED_LIBRARY) $(PROGRAM) $(SIMPLE_PROGRAMS) $(HOST_PROGRAM) $(HOST_SIMPLE_PROGRAMS) $(HOST_SHARED_LIBRARY)

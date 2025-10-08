@@ -1,0 +1,29 @@
+diff --git a/mozglue/misc/AutoMemory.h b/mozglue/misc/AutoMemory.h
+new file mode 100644
+--- /dev/null
++++ b/mozglue/misc/AutoMemory.h
+@@ -0,0 +1,24 @@
++#ifndef mozilla_glue_auto_memory_h
++#define mozilla_glue_auto_memory_h
++
++#include <stddef.h>
++#include <stdbool.h>
++#include "mozilla/Attributes.h"
++#include "mozilla/Types.h"
++
++MOZ_BEGIN_EXTERN_C
++
++MFBT_API void* moz_persistent_alloc_ex(size_t size, bool zero_initialize) MOZ_INFALLIBLE_ALLOCATOR;
++MFBT_API void* moz_persistent_aligned_alloc_ex(size_t size, size_t alignment, bool zero_initialize) MOZ_INFALLIBLE_ALLOCATOR;
++
++MOZ_ALWAYS_INLINE void* moz_persistent_alloc(size_t size) {
++    return moz_persistent_alloc_ex(size, true);
++}
++
++MOZ_ALWAYS_INLINE void* moz_persistent_aligned_alloc(size_t size, size_t alignment) {
++    return moz_persistent_aligned_alloc_ex(size, alignment, true);
++}
++
++MOZ_END_EXTERN_C
++
++#endif // mozilla_glue_auto_memory_h

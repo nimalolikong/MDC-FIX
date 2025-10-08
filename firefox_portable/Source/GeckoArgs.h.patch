@@ -1,0 +1,103 @@
+diff --git a/toolkit/xre/GeckoArgs.h b/toolkit/xre/GeckoArgs.h
+--- a/toolkit/xre/GeckoArgs.h
++++ b/toolkit/xre/GeckoArgs.h
+@@ -193,74 +193,74 @@ void CommandLineArg<mozilla::ipc::ReadOn
+     const char* aName, mozilla::ipc::ReadOnlySharedMemoryHandle aValue,
+     ChildProcessArgs& aArgs);
+ 
+ #if defined(__GNUC__)
+ #  pragma GCC diagnostic push
+ #  pragma GCC diagnostic ignored "-Wunused-variable"
+ #endif
+ 
+-static CommandLineArg<uint64_t> sParentPid{"-parentPid", "parentpid"};
+-static CommandLineArg<const char*> sInitialChannelID{"-initialChannelId",
++inline CommandLineArg<uint64_t> sParentPid{"-parentPid", "parentpid"};
++inline CommandLineArg<const char*> sInitialChannelID{"-initialChannelId",
+                                                      "initialchannelid"};
+-static CommandLineArg<const char*> sParentBuildID{"-parentBuildID",
++inline CommandLineArg<const char*> sParentBuildID{"-parentBuildID",
+                                                   "parentbuildid"};
+-static CommandLineArg<const char*> sAppDir{"-appDir", "appdir"};
+-static CommandLineArg<const char*> sGREOmni{"-greomni", "greomni"};
+-static CommandLineArg<const char*> sAppOmni{"-appomni", "appomni"};
+-static CommandLineArg<const char*> sProfile{"-profile", "profile"};
++inline CommandLineArg<const char*> sAppDir{"-appDir", "appdir"};
++inline CommandLineArg<const char*> sGREOmni{"-greomni", "greomni"};
++inline CommandLineArg<const char*> sAppOmni{"-appomni", "appomni"};
++inline CommandLineArg<const char*> sProfile{"-profile", "profile"};
+ 
+-static CommandLineArg<UniqueFileHandle> sIPCHandle{"-ipcHandle", "ipchandle"};
++inline CommandLineArg<UniqueFileHandle> sIPCHandle{"-ipcHandle", "ipchandle"};
+ 
+-static CommandLineArg<mozilla::ipc::ReadOnlySharedMemoryHandle> sJsInitHandle{
++inline CommandLineArg<mozilla::ipc::ReadOnlySharedMemoryHandle> sJsInitHandle{
+     "-jsInitHandle", "jsinithandle"};
+-static CommandLineArg<mozilla::ipc::ReadOnlySharedMemoryHandle> sPrefsHandle{
++inline CommandLineArg<mozilla::ipc::ReadOnlySharedMemoryHandle> sPrefsHandle{
+     "-prefsHandle", "prefshandle"};
+-static CommandLineArg<mozilla::ipc::ReadOnlySharedMemoryHandle> sPrefMapHandle{
++inline CommandLineArg<mozilla::ipc::ReadOnlySharedMemoryHandle> sPrefMapHandle{
+     "-prefMapHandle", "prefmaphandle"};
+ 
+-static CommandLineArg<uint64_t> sSandboxingKind{"-sandboxingKind",
++inline CommandLineArg<uint64_t> sSandboxingKind{"-sandboxingKind",
+                                                 "sandboxingkind"};
+ 
+-static CommandLineArg<bool> sSafeMode{"-safeMode", "safemode"};
++inline CommandLineArg<bool> sSafeMode{"-safeMode", "safemode"};
+ 
+-static CommandLineArg<bool> sIsForBrowser{"-isForBrowser", "isforbrowser"};
+-static CommandLineArg<bool> sNotForBrowser{"-notForBrowser", "notforbrowser"};
++inline CommandLineArg<bool> sIsForBrowser{"-isForBrowser", "isforbrowser"};
++inline CommandLineArg<bool> sNotForBrowser{"-notForBrowser", "notforbrowser"};
+ 
+-static CommandLineArg<const char*> sPluginPath{"-pluginPath", "pluginpath"};
+-static CommandLineArg<bool> sPluginNativeEvent{"-pluginNativeEvent",
++inline CommandLineArg<const char*> sPluginPath{"-pluginPath", "pluginpath"};
++inline CommandLineArg<bool> sPluginNativeEvent{"-pluginNativeEvent",
+                                                "pluginnativeevent"};
+ #if defined(XP_WIN) || defined(XP_MACOSX) || defined(XP_IOS)
+-static CommandLineArg<const char*> sCrashReporter{"-crashReporter",
++inline CommandLineArg<const char*> sCrashReporter{"-crashReporter",
+                                                   "crashreporter"};
+ #else
+-static CommandLineArg<UniqueFileHandle> sCrashReporter{"-crashReporter",
++inline CommandLineArg<UniqueFileHandle> sCrashReporter{"-crashReporter",
+                                                        "crashreporter"};
+ #endif
+-static CommandLineArg<UniqueFileHandle> sCrashHelper{"-crashHelper",
++inline CommandLineArg<UniqueFileHandle> sCrashHelper{"-crashHelper",
+                                                      "crashhelper"};
+ 
+ #if defined(XP_WIN)
+ #  if defined(MOZ_SANDBOX)
+-static CommandLineArg<bool> sWin32kLockedDown{"-win32kLockedDown",
++inline CommandLineArg<bool> sWin32kLockedDown{"-win32kLockedDown",
+                                               "win32klockeddown"};
+ #  endif  // defined(MOZ_SANDBOX)
+-static CommandLineArg<bool> sDisableDynamicDllBlocklist{
++inline CommandLineArg<bool> sDisableDynamicDllBlocklist{
+     "-disableDynamicBlocklist", "disabledynamicblocklist"};
+ #endif  // defined(XP_WIN)
+ 
+ #if defined(XP_LINUX) && defined(MOZ_SANDBOX)
+-static CommandLineArg<UniqueFileHandle> sSandboxReporter{"-sandboxReporter",
++inline CommandLineArg<UniqueFileHandle> sSandboxReporter{"-sandboxReporter",
+                                                          "sandboxreporter"};
+-static CommandLineArg<UniqueFileHandle> sChrootClient{"-chrootClient",
++inline CommandLineArg<UniqueFileHandle> sChrootClient{"-chrootClient",
+                                                       "chrootclient"};
+ #endif
+ 
+ #ifdef MOZ_ENABLE_FORKSERVER
+-static CommandLineArg<UniqueFileHandle> sSignalPipe{"-signalPipe",
++inline CommandLineArg<UniqueFileHandle> sSignalPipe{"-signalPipe",
+                                                     "signalpipe"};
+ #endif
+ 
+ #if defined(__GNUC__)
+ #  pragma GCC diagnostic pop
+ #endif
+ 
+ }  // namespace geckoargs

@@ -1,0 +1,25 @@
+diff --git a/gfx/thebes/gfxDWriteFontList.cpp b/gfx/thebes/gfxDWriteFontList.cpp
+--- a/gfx/thebes/gfxDWriteFontList.cpp
++++ b/gfx/thebes/gfxDWriteFontList.cpp
+@@ -1154,19 +1154,19 @@ FontVisibility gfxDWriteFontList::GetVis
+     return FontVisibility::Base;
+   }
+   if (FamilyInList(aName, kLangPackFonts)) {
+     return FontVisibility::LangPack;
+   }
+   return FontVisibility::User;
+ }
+ 
+-nsTArray<std::pair<const char**, uint32_t>>
++nsTArray<std::pair<const char* const*, uint32_t>>
+ gfxDWriteFontList::GetFilteredPlatformFontLists() {
+-  nsTArray<std::pair<const char**, uint32_t>> fontLists;
++  nsTArray<std::pair<const char* const*, uint32_t>> fontLists;
+ 
+   fontLists.AppendElement(std::make_pair(kBaseFonts, std::size(kBaseFonts)));
+   fontLists.AppendElement(
+       std::make_pair(kLangPackFonts, std::size(kLangPackFonts)));
+ 
+   return fontLists;
+ }
+ 

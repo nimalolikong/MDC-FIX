@@ -1,0 +1,52 @@
+diff --git a/layout/generic/nsColumnSetFrame.cpp b/layout/generic/nsColumnSetFrame.cpp
+--- a/layout/generic/nsColumnSetFrame.cpp
++++ b/layout/generic/nsColumnSetFrame.cpp
+@@ -1,16 +1,20 @@
+ /* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+ /* vim: set ts=8 sts=2 et sw=2 tw=80: */
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ /* rendering object for css3 multi-column layout */
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++#include <xmmintrin.h>
++#endif
++
+ #include "nsColumnSetFrame.h"
+ 
+ #include "mozilla/ColumnUtils.h"
+ #include "mozilla/Logging.h"
+ #include "mozilla/PresShell.h"
+ #include "mozilla/StaticPrefs_layout.h"
+ #include "mozilla/ToString.h"
+ #include "nsCSSRendering.h"
+@@ -1285,17 +1289,26 @@ void nsColumnSetFrame::BuildDisplayList(
+   DisplayBorderBackgroundOutline(aBuilder, aLists);
+ 
+   if (IsVisibleForPainting()) {
+     aLists.BorderBackground()->AppendNewToTop<nsDisplayColumnRule>(aBuilder,
+                                                                    this);
+   }
+ 
+   // Our children won't have backgrounds so it doesn't matter where we put them.
+-  for (nsIFrame* f : mFrames) {
++  const auto& frames = mFrames;
++  for (auto it = frames.begin(); it != frames.end();) {
++    auto f = *it;
++    ++it;
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++    if (it != frames.end()) {
++      _mm_prefetch((char *)*it, _MM_HINT_T0);
++      _mm_prefetch((char *)(*it) + 64, _MM_HINT_T0);
++    }
++#endif
+     BuildDisplayListForChild(aBuilder, f, aLists);
+   }
+ }
+ 
+ void nsColumnSetFrame::AppendDirectlyOwnedAnonBoxes(
+     nsTArray<OwnedAnonBox>& aResult) {
+   // Everything in mFrames is continuations of the first thing in mFrames.
+   nsIFrame* column = mFrames.FirstChild();

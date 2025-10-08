@@ -1,0 +1,254 @@
+diff --git a/dom/canvas/WebGLTexelConversions.cpp b/dom/canvas/WebGLTexelConversions.cpp
+--- a/dom/canvas/WebGLTexelConversions.cpp
++++ b/dom/canvas/WebGLTexelConversions.cpp
+@@ -69,16 +69,140 @@ class WebGLImageConverter {
+       case WebGLTexelFormat::BGRA8:
+         return 4;
+       default:
+         MOZ_ASSERT(false, "Unknown texel format. Coding mistake?");
+         return 0;
+     }
+   }
+ 
++  template <WebGLTexelFormat SrcFormat, WebGLTexelFormat DstFormat,
++            typename SrcType, typename DstType,
++            typename IntermediateSrcType, typename IntermediateDstType>
++  void MOZ_NEVER_INLINE
++  run_loop_helper(WebGLTexelPremultiplicationOp PremultiplicationOp,
++                  const color::ColorProfileConversionDesc& conversion,
++                  bool sameColorSpace) {
++    const size_t NumElementsPerSrcTexel =
++        NumElementsPerTexelForFormat<SrcFormat>();
++    const size_t NumElementsPerDstTexel =
++        NumElementsPerTexelForFormat<DstFormat>();
++    const size_t MaxElementsPerTexel = 4;
++    MOZ_ASSERT(NumElementsPerSrcTexel <= MaxElementsPerTexel,
++               "unhandled format");
++    MOZ_ASSERT(NumElementsPerDstTexel <= MaxElementsPerTexel,
++               "unhandled format");
++
++    // we assume that the strides are multiples of the sizeof of respective
++    // types. this assumption will allow us to iterate over src and dst images
++    // using typed pointers, e.g. uint8_t* or uint16_t* or float*, instead of
++    // untyped pointers. So this assumption allows us to write cleaner and safer
++    // code, but it might not be true forever and if it eventually becomes
++    // wrong, we'll have to revert to always iterating using uint8_t* pointers
++    // regardless of the types at hand.
++    MOZ_ASSERT(
++        mSrcStride % sizeof(SrcType) == 0 && mDstStride % sizeof(DstType) == 0,
++        "Unsupported: texture stride is not a multiple of sizeof(type)");
++    const ptrdiff_t srcStrideInElements =
++        mSrcStride / static_cast<ptrdiff_t>(sizeof(SrcType));
++    const ptrdiff_t dstStrideInElements =
++        mDstStride / static_cast<ptrdiff_t>(sizeof(DstType));
++    // Pop quiz: What's `ptrdiff_t(-16) / sizeof(int32_t)`?
++    // Did you guess +4611686018427387900?
++    MOZ_ASSERT(bool(srcStrideInElements < 0) == bool(mSrcStride < 0));
++    MOZ_ASSERT(bool(dstStrideInElements < 0) == bool(mDstStride < 0));
++
++    const SrcType* srcRowStart = static_cast<const SrcType*>(mSrcStart);
++    DstType* dstRowStart = static_cast<DstType*>(mDstStart);
++
++    // the loop performing the texture format conversion
++    for (size_t i = 0; i < mHeight; ++i) {
++      const SrcType* srcRowEnd = srcRowStart + mWidth * NumElementsPerSrcTexel;
++      const SrcType* srcPtr = srcRowStart;
++      DstType* dstPtr = dstRowStart;
++      while (srcPtr != srcRowEnd) {
++        // convert a single texel. We proceed in 4 steps: unpack the source
++        // texel so the corresponding interchange format (e.g. unpack RGB565 to
++        // RGBA8), do colorSpace conversion if necessary, convert the resulting
++        // data type to the destination type (e.g. convert from RGBA8 to
++        // RGBA32F), and finally pack the destination texel (e.g. pack RGBA32F
++        // to RGB32F).
++        IntermediateSrcType unpackedSrc[MaxElementsPerTexel];
++        IntermediateDstType unpackedDst[MaxElementsPerTexel];
++
++        // unpack a src texel to corresponding intermediate src format.
++        // for example, unpack RGB565 to RGBA8
++        unpack<SrcFormat>(srcPtr, unpackedSrc);
++
++        if (!sameColorSpace) {
++          // do colorSpace conversion, which leaves alpha untouched
++          float srcAsFloat[MaxElementsPerTexel];
++          convertType(unpackedSrc, srcAsFloat);
++          auto inTexelVec =
++              color::vec3({srcAsFloat[0], srcAsFloat[1], srcAsFloat[2]});
++          auto outTexelVec = conversion.DstFromSrc(inTexelVec);
++          srcAsFloat[0] = outTexelVec[0];
++          srcAsFloat[1] = outTexelVec[1];
++          srcAsFloat[2] = outTexelVec[2];
++          convertType(srcAsFloat, unpackedSrc);
++        }
++
++        // convert the data type to the destination type, if needed.
++        // for example, convert RGBA8 to RGBA32F
++        convertType(unpackedSrc, unpackedDst);
++        // pack the destination texel.
++        // for example, pack RGBA32F to RGB32F
++
++        #define WTC_PACK_CASE(op)                               \
++          case WebGLTexelPremultiplicationOp::op:               \
++            pack<DstFormat, WebGLTexelPremultiplicationOp::op>( \
++                unpackedDst, dstPtr);                           \
++            break;
++
++        switch (PremultiplicationOp) {
++          WTC_PACK_CASE(None)
++          WTC_PACK_CASE(Premultiply)
++          WTC_PACK_CASE(Unpremultiply)
++          default:
++            MOZ_ASSERT(false, "unhandled case. Coding mistake?");
++        }
++
++        #undef WTC_PACK_CASE
++
++        srcPtr += NumElementsPerSrcTexel;
++        dstPtr += NumElementsPerDstTexel;
++      }
++      srcRowStart += srcStrideInElements;
++      dstRowStart += dstStrideInElements;
++    }
++  }
++
++  struct ConversionSetup {
++    color::ColorProfileConversionDesc conversion;
++    bool sameColorSpace;
++  };
++
++  static MOZ_NEVER_INLINE ConversionSetup
++  SetupConversion(dom::PredefinedColorSpace SrcColorSpace,
++                  dom::PredefinedColorSpace DstColorSpace) {
++    auto inColorSpace2 = gfx::ToColorSpace2(SrcColorSpace);
++    auto outColorSpace2 = gfx::ToColorSpace2(DstColorSpace);
++
++    auto inColorProfile = gl::GLBlitHelper::ToColorProfileDesc(inColorSpace2);
++    auto outColorProfile = gl::GLBlitHelper::ToColorProfileDesc(outColorSpace2);
++
++    const auto conversion = color::ColorProfileConversionDesc::From({
++        .src = *inColorProfile,
++        .dst = *outColorProfile,
++    });
++    bool sameColorSpace = (SrcColorSpace == DstColorSpace);
++
++    return {conversion, sameColorSpace};
++  }
++
+   /*
+    * This is the completely format-specific templatized conversion function,
+    * that will be instantiated hundreds of times for all different combinations.
+    * It is important to avoid generating useless code here. In particular, many
+    * instantiations of this function template will never be called, so we try
+    * to return immediately in these cases to allow the compiler to avoid
+    * generating useless code.
+    */
+@@ -153,104 +277,22 @@ class WebGLImageConverter {
+         IntermediateFormat<SrcFormat>::Value;
+     const WebGLTexelFormat IntermediateDstFormat =
+         IntermediateFormat<DstFormat>::Value;
+     using IntermediateSrcType =
+         typename DataTypeForFormat<IntermediateSrcFormat>::Type;
+     using IntermediateDstType =
+         typename DataTypeForFormat<IntermediateDstFormat>::Type;
+ 
+-    const size_t NumElementsPerSrcTexel =
+-        NumElementsPerTexelForFormat<SrcFormat>();
+-    const size_t NumElementsPerDstTexel =
+-        NumElementsPerTexelForFormat<DstFormat>();
+-    const size_t MaxElementsPerTexel = 4;
+-    MOZ_ASSERT(NumElementsPerSrcTexel <= MaxElementsPerTexel,
+-               "unhandled format");
+-    MOZ_ASSERT(NumElementsPerDstTexel <= MaxElementsPerTexel,
+-               "unhandled format");
+-
+-    // we assume that the strides are multiples of the sizeof of respective
+-    // types. this assumption will allow us to iterate over src and dst images
+-    // using typed pointers, e.g. uint8_t* or uint16_t* or float*, instead of
+-    // untyped pointers. So this assumption allows us to write cleaner and safer
+-    // code, but it might not be true forever and if it eventually becomes
+-    // wrong, we'll have to revert to always iterating using uint8_t* pointers
+-    // regardless of the types at hand.
+-    MOZ_ASSERT(
+-        mSrcStride % sizeof(SrcType) == 0 && mDstStride % sizeof(DstType) == 0,
+-        "Unsupported: texture stride is not a multiple of sizeof(type)");
+-    const ptrdiff_t srcStrideInElements =
+-        mSrcStride / static_cast<ptrdiff_t>(sizeof(SrcType));
+-    const ptrdiff_t dstStrideInElements =
+-        mDstStride / static_cast<ptrdiff_t>(sizeof(DstType));
+-    // Pop quiz: What's `ptrdiff_t(-16) / sizeof(int32_t)`?
+-    // Did you guess +4611686018427387900?
+-    MOZ_ASSERT(bool(srcStrideInElements < 0) == bool(mSrcStride < 0));
+-    MOZ_ASSERT(bool(dstStrideInElements < 0) == bool(mDstStride < 0));
+-
+-    const SrcType* srcRowStart = static_cast<const SrcType*>(mSrcStart);
+-    DstType* dstRowStart = static_cast<DstType*>(mDstStart);
+-
+-    static auto inColorSpace2 = gfx::ToColorSpace2(SrcColorSpace);
+-    static auto outColorSpace2 = gfx::ToColorSpace2(DstColorSpace);
+-
+-    auto inColorProfile = gl::GLBlitHelper::ToColorProfileDesc(inColorSpace2);
+-    auto outColorProfile = gl::GLBlitHelper::ToColorProfileDesc(outColorSpace2);
+-
+-    const auto conversion = color::ColorProfileConversionDesc::From({
+-        .src = *inColorProfile,
+-        .dst = *outColorProfile,
+-    });
++    ConversionSetup setup = SetupConversion(SrcColorSpace, DstColorSpace);
+ 
+-    // the loop performing the texture format conversion
+-    for (size_t i = 0; i < mHeight; ++i) {
+-      const SrcType* srcRowEnd = srcRowStart + mWidth * NumElementsPerSrcTexel;
+-      const SrcType* srcPtr = srcRowStart;
+-      DstType* dstPtr = dstRowStart;
+-      while (srcPtr != srcRowEnd) {
+-        // convert a single texel. We proceed in 4 steps: unpack the source
+-        // texel so the corresponding interchange format (e.g. unpack RGB565 to
+-        // RGBA8), do colorSpace conversion if necessary, convert the resulting
+-        // data type to the destination type (e.g. convert from RGBA8 to
+-        // RGBA32F), and finally pack the destination texel (e.g. pack RGBA32F
+-        // to RGB32F).
+-        IntermediateSrcType unpackedSrc[MaxElementsPerTexel];
+-        IntermediateDstType unpackedDst[MaxElementsPerTexel];
+-
+-        // unpack a src texel to corresponding intermediate src format.
+-        // for example, unpack RGB565 to RGBA8
+-        unpack<SrcFormat>(srcPtr, unpackedSrc);
+-
+-        if (!sameColorSpace) {
+-          // do colorSpace conversion, which leaves alpha untouched
+-          float srcAsFloat[MaxElementsPerTexel];
+-          convertType(unpackedSrc, srcAsFloat);
+-          auto inTexelVec =
+-              color::vec3({srcAsFloat[0], srcAsFloat[1], srcAsFloat[2]});
+-          auto outTexelVec = conversion.DstFromSrc(inTexelVec);
+-          srcAsFloat[0] = outTexelVec[0];
+-          srcAsFloat[1] = outTexelVec[1];
+-          srcAsFloat[2] = outTexelVec[2];
+-          convertType(srcAsFloat, unpackedSrc);
+-        }
+-
+-        // convert the data type to the destination type, if needed.
+-        // for example, convert RGBA8 to RGBA32F
+-        convertType(unpackedSrc, unpackedDst);
+-        // pack the destination texel.
+-        // for example, pack RGBA32F to RGB32F
+-        pack<DstFormat, PremultiplicationOp>(unpackedDst, dstPtr);
+-
+-        srcPtr += NumElementsPerSrcTexel;
+-        dstPtr += NumElementsPerDstTexel;
+-      }
+-      srcRowStart += srcStrideInElements;
+-      dstRowStart += dstStrideInElements;
+-    }
++    run_loop_helper<SrcFormat, DstFormat, SrcType, DstType,
++                    IntermediateSrcType, IntermediateDstType>(
++                    PremultiplicationOp,
++                    setup.conversion, setup.sameColorSpace);
+ 
+     mSuccess = true;
+   }
+ 
+   template <WebGLTexelFormat SrcFormat, WebGLTexelFormat DstFormat,
+             WebGLTexelPremultiplicationOp PremultiplicationOp,
+             dom::PredefinedColorSpace SrcColorSpace>
+   void run(dom::PredefinedColorSpace dstColorSpace) {

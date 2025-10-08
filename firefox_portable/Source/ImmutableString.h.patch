@@ -1,0 +1,19 @@
+diff --git a/gfx/angle/checkout/src/compiler/translator/ImmutableString.h b/gfx/angle/checkout/src/compiler/translator/ImmutableString.h
+--- a/gfx/angle/checkout/src/compiler/translator/ImmutableString.h
++++ b/gfx/angle/checkout/src/compiler/translator/ImmutableString.h
+@@ -130,14 +130,14 @@ class ImmutableString
+     uint32_t mangledNameHash() const;
+     uint32_t unmangledNameHash() const;
+ 
+   private:
+     const char *mData;
+     size_t mLength;
+ };
+ 
+-constexpr ImmutableString kEmptyImmutableString("");
++inline constexpr ImmutableString kEmptyImmutableString("");
+ }  // namespace sh
+ 
+ std::ostream &operator<<(std::ostream &os, const sh::ImmutableString &str);
+ 
+ #endif  // COMPILER_TRANSLATOR_IMMUTABLESTRING_H_

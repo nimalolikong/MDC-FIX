@@ -1,0 +1,22 @@
+diff --git a/gfx/thebes/gfxDWriteFontList.h b/gfx/thebes/gfxDWriteFontList.h
+--- a/gfx/thebes/gfxDWriteFontList.h
++++ b/gfx/thebes/gfxDWriteFontList.h
+@@ -431,17 +431,17 @@ class gfxDWriteFontList final : public g
+   // return null if no usable result found
+   gfxFontEntry* PlatformGlobalFontFallback(nsPresContext* aPresContext,
+                                            const uint32_t aCh,
+                                            Script aRunScript,
+                                            const gfxFontStyle* aMatchStyle,
+                                            FontFamily& aMatchedFamily)
+       MOZ_REQUIRES(mLock) override;
+ 
+-  nsTArray<std::pair<const char**, uint32_t>> GetFilteredPlatformFontLists()
++   nsTArray<std::pair<const char* const*, uint32_t>> GetFilteredPlatformFontLists()
+       override;
+ 
+  private:
+   friend class gfxDWriteFontFamily;
+ 
+   nsresult GetFontSubstitutes() MOZ_REQUIRES(mLock);
+ 
+   void GetDirectWriteSubstitutes() MOZ_REQUIRES(mLock);

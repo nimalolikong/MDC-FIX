@@ -1,0 +1,26 @@
+diff --git a/mfbt/Attributes.h b/mfbt/Attributes.h
+--- a/mfbt/Attributes.h
++++ b/mfbt/Attributes.h
+@@ -6,16 +6,22 @@
+ 
+ /* Implementations of various class and method modifier attributes. */
+ 
+ #ifndef mozilla_Attributes_h
+ #define mozilla_Attributes_h
+ 
+ #include "mozilla/Compiler.h"
+ 
++#if defined(WIN32) || defined(__SYMBIAN32__)
++#  define TT_RESTRICTED_PTR     __restrict
++#else
++#  define TT_RESTRICTED_PTR     __restrict__
++#endif
++
+ /*
+  * MOZ_ALWAYS_INLINE is a macro which expands to tell the compiler that the
+  * method decorated with it must be inlined, even if the compiler thinks
+  * otherwise.  This is only a (much) stronger version of the inline hint:
+  * compilers are not guaranteed to respect it (although they're much more likely
+  * to do so).
+  *
+  * The MOZ_ALWAYS_INLINE_EVEN_DEBUG macro is yet stronger. It tells the

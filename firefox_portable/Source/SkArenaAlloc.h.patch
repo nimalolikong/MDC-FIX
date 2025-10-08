@@ -1,0 +1,22 @@
+diff --git a/gfx/skia/skia/src/base/SkArenaAlloc.h b/gfx/skia/skia/src/base/SkArenaAlloc.h
+--- a/gfx/skia/skia/src/base/SkArenaAlloc.h
++++ b/gfx/skia/skia/src/base/SkArenaAlloc.h
+@@ -24,17 +24,17 @@
+ #include <type_traits>  // IWYU pragma: keep
+ #include <utility>
+ 
+ // We found allocating strictly doubling amounts of memory from the heap left too
+ // much unused slop, particularly on Android.  Instead we'll follow a Fibonacci-like
+ // progression.
+ 
+ // SkFibonacci47 is the first 47 Fibonacci numbers. Fib(47) is the largest value less than 2 ^ 32.
+-extern std::array<const uint32_t, 47> SkFibonacci47;
++extern constinit const std::array<const uint32_t, 47> SkFibonacci47;
+ template<uint32_t kMaxSize>
+ class SkFibBlockSizes {
+ public:
+     // staticBlockSize, and firstAllocationSize are parameters describing the initial memory
+     // layout. staticBlockSize describes the size of the inlined memory, and firstAllocationSize
+     // describes the size of the first block to be allocated if the static block is exhausted. By
+     // convention, firstAllocationSize is the first choice for the block unit size followed by
+     // staticBlockSize followed by the default of 1024 bytes.

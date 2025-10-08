@@ -1,0 +1,224 @@
+diff --git a/intl/components/src/LocaleGenerated.cpp b/intl/components/src/LocaleGenerated.cpp
+--- a/intl/components/src/LocaleGenerated.cpp
++++ b/intl/components/src/LocaleGenerated.cpp
+@@ -28,17 +28,17 @@ static inline bool HasReplacement(
+   return std::binary_search(std::begin(subtags), std::end(subtags), ptr,
+                             [](const char* a, const char* b) {
+                               return memcmp(a, b, TagLength - 1) < 0;
+                             });
+ }
+ 
+ template <size_t Length, size_t TagLength, size_t SubtagLength>
+ static inline const char* SearchReplacement(
+-    const char (&subtags)[Length][TagLength], const char* (&aliases)[Length],
++    const char const (&subtags)[Length][TagLength], const char* const (&aliases)[Length],
+     const mozilla::intl::LanguageTagSubtag<SubtagLength>& subtag) {
+   MOZ_ASSERT(subtag.Length() == TagLength - 1,
+              "subtag must have the same length as the list of subtags");
+ 
+   const char* ptr = subtag.Span().data();
+   auto p = std::lower_bound(std::begin(subtags), std::end(subtags), ptr,
+                             [](const char* a, const char* b) {
+                               return memcmp(a, b, TagLength - 1) < 0;
+@@ -104,17 +104,17 @@ static bool IsCanonicallyCasedTransformT
+ bool mozilla::intl::Locale::LanguageMapping(LanguageSubtag& language) {
+   MOZ_ASSERT(IsStructurallyValidLanguageTag(language.Span()));
+   MOZ_ASSERT(IsCanonicallyCasedLanguageTag(language.Span()));
+ 
+   if (language.Length() == 2) {
+     static const char languages[8][3] = {
+       "bh", "in", "iw", "ji", "jw", "mo", "tl", "tw",
+     };
+-    static const char* aliases[8] = {
++    static constexpr const char* aliases[8] = {
+       "bho", "id", "he", "yi", "jv", "ro", "fil", "ak",
+     };
+ 
+     if (const char* replacement = SearchReplacement(languages, aliases, language)) {
+       language.Set(mozilla::MakeStringSpan(replacement));
+       return true;
+     }
+     return false;
+@@ -160,17 +160,17 @@ bool mozilla::intl::Locale::LanguageMapp
+       "tgg", "tgk", "tgl", "tha", "thc", "thw", "thx", "tib", "tid", "tie",
+       "tir", "tkk", "tlw", "tmk", "tmp", "tne", "ton", "tpw", "tsf", "tsn",
+       "tso", "ttq", "tuk", "tur", "twi", "uig", "ukr", "umu", "unp", "uok",
+       "urd", "uzb", "uzn", "ven", "vie", "vol", "wel", "wgw", "wit", "wiw",
+       "wln", "wol", "xba", "xho", "xia", "xkh", "xpe", "xrq", "xsj", "xsl",
+       "xss", "ybd", "ydd", "yen", "yid", "yiy", "yma", "ymt", "yor", "yos",
+       "yuu", "zai", "zha", "zho", "zir", "zkb", "zsm", "zul", "zyb",
+     };
+-    static const char* aliases[419] = {
++    static constexpr const char* aliases[419] = {
+       "aas",  "aa",  "ab",  "dz",  "af", "apf", "ami", "apc", "aeb", "jrb",
+        "ak",  "sq",  "sq",  "am",  "ar",  "ar",  "an",  "hy", "snz",  "as",
+       "ktz",  "av",  "ae",  "ay",  "ay", "nun",  "az",  "az",  "ba",  "bm",
+        "eu", "nvo", "bal", "bik",  "be",  "bn", "bcg", "fbl", "bir", "bho",
+        "bi", "drl", "bzc", "ebk", "iba",  "bo",  "bs",  "br", "beb",  "bg",
+        "my", "luy", "bua",  "ca", "rki",  "cs",  "ch",  "ce",  "zh",  "cu",
+        "cv", "mom", "cmr", "syr",  "sa", "xch",  "zh",  "kw",  "co", "pij",
+       "quh",  "cr",  "cr",  "cy",  "cs", "dnj",  "da", "njz",  "de", "doi",
+@@ -266,17 +266,17 @@ bool mozilla::intl::Locale::RegionMappin
+   MOZ_ASSERT(IsCanonicallyCasedRegionTag(region.Span()));
+ 
+   if (region.Length() == 2) {
+     static const char regions[23][3] = {
+       "BU", "CS", "CT", "DD", "DY", "FQ", "FX", "HV", "JT", "MI",
+       "NH", "NQ", "PU", "PZ", "QU", "RH", "TP", "UK", "VD", "WK",
+       "YD", "YU", "ZR",
+     };
+-    static const char* aliases[23] = {
++    static constexpr const char* aliases[23] = {
+       "MM", "RS", "KI", "DE", "BJ", "AQ", "FR", "BF", "UM", "UM",
+       "VU", "AQ", "UM", "PA", "EU", "ZW", "TL", "GB", "VN", "UM",
+       "YE", "RS", "CD",
+     };
+ 
+     if (const char* replacement = SearchReplacement(regions, aliases, region)) {
+       region.Set(mozilla::MakeStringSpan(replacement));
+       return true;
+@@ -312,17 +312,17 @@ bool mozilla::intl::Locale::RegionMappin
+       "780", "784", "788", "792", "795", "796", "798", "800", "804", "807",
+       "818", "826", "830", "831", "832", "833", "834", "840", "850", "854",
+       "858", "860", "862", "876", "882", "886", "887", "891", "894", "958",
+       "959", "960", "962", "963", "964", "965", "966", "967", "968", "969",
+       "970", "971", "972", "973", "974", "975", "976", "977", "978", "979",
+       "980", "981", "982", "983", "984", "985", "986", "987", "988", "989",
+       "990", "991", "992", "993", "994", "995", "996", "997", "998", "999",
+     };
+-    static const char* aliases[300] = {
++    static constexpr const char* aliases[300] = {
+        "AF",  "AL",  "AQ",  "DZ",  "AS",  "AD",  "AO",  "AG",  "AZ",  "AR",
+        "AU",  "AT",  "BS",  "BH",  "BD",  "AM",  "BB",  "BE",  "BM", "034",
+        "BT",  "BO",  "BA",  "BW",  "BV",  "BR",  "BZ",  "IO",  "SB",  "VG",
+        "BN",  "BG",  "MM",  "BI",  "BY",  "KH",  "CM",  "CA",  "CV",  "KY",
+        "CF",  "LK",  "TD",  "CL",  "CN",  "TW",  "CX",  "CC",  "CO",  "KM",
+        "YT",  "CG",  "CD",  "CK",  "CR",  "HR",  "CU",  "CY",  "CZ",  "BJ",
+        "DK",  "DM",  "DO",  "EC",  "SV",  "GQ",  "ET",  "ET",  "ER",  "EE",
+        "FO",  "FK",  "GS",  "FJ",  "FI",  "AX",  "FR",  "FR",  "GF",  "PF",
+@@ -943,17 +943,17 @@ bool mozilla::intl::Locale::SignLanguage
+   MOZ_ASSERT(IsCanonicallyCasedRegionTag(region.Span()));
+ 
+   if (region.Length() == 2) {
+     static const char regions[22][3] = {
+       "BR", "CO", "DD", "DE", "DK", "ES", "FR", "FX", "GB", "GR",
+       "IE", "IT", "JP", "MX", "NI", "NL", "NO", "PT", "SE", "UK",
+       "US", "ZA",
+     };
+-    static const char* aliases[22] = {
++    static constexpr const char* aliases[22] = {
+       "bzs", "csn", "gsg", "gsg", "dsl", "ssp", "fsl", "fsl", "bfi", "gss",
+       "isg", "ise", "jsl", "mfs", "ncs", "dse", "nsi", "psr", "swl", "bfi",
+       "ase", "sfs",
+     };
+ 
+     if (const char* replacement = SearchReplacement(regions, aliases, region)) {
+       language.Set(mozilla::MakeStringSpan(replacement));
+       return true;
+@@ -962,17 +962,17 @@ bool mozilla::intl::Locale::SignLanguage
+   }
+ 
+   {
+     static const char regions[22][4] = {
+       "076", "170", "208", "249", "250", "276", "278", "280", "300", "372",
+       "380", "392", "484", "528", "558", "578", "620", "710", "724", "752",
+       "826", "840",
+     };
+-    static const char* aliases[22] = {
++    static constexpr const char* aliases[22] = {
+       "bzs", "csn", "dsl", "fsl", "fsl", "gsg", "gsg", "gsg", "gss", "isg",
+       "ise", "jsl", "mfs", "dse", "ncs", "nsi", "psr", "sfs", "ssp", "swl",
+       "bfi", "ase",
+     };
+ 
+     if (const char* replacement = SearchReplacement(regions, aliases, region)) {
+       language.Set(mozilla::MakeStringSpan(replacement));
+       return true;
+@@ -1012,17 +1012,17 @@ static int32_t CompareUnicodeType(const 
+ 
+   // Return zero if both strings are equal or a positive number if |b| is a
+   // prefix of |a|.
+   return int32_t(UnsignedChar(a[b.size()]));
+ }
+ 
+ template <size_t Length>
+ static inline const char* SearchUnicodeReplacement(
+-  const char* (&types)[Length], const char* (&aliases)[Length],
++  const char* const (&types)[Length], const char* const (&aliases)[Length],
+   mozilla::Span<const char> type) {
+ 
+   auto p = std::lower_bound(std::begin(types), std::end(types), type,
+                             [](const auto& a, const auto& b) {
+                               return CompareUnicodeType(a, b) < 0;
+                             });
+   if (p != std::end(types) && CompareUnicodeType(*p, type) == 0) {
+     return aliases[std::distance(std::begin(types), p)];
+@@ -1072,17 +1072,17 @@ const char* mozilla::intl::Locale::Repla
+   }
+   else if (IsUnicodeKey(key, "ms")) {
+     if (IsUnicodeType(type, "imperial")) {
+       return "uksystem";
+     }
+   }
+   else if (IsUnicodeKey(key, "rg") ||
+            IsUnicodeKey(key, "sd")) {
+-    static const char* types[147] = {
++    static constexpr const char* types[147] = {
+          "cn11" ,  "cn12" ,  "cn13" ,  "cn14" ,  "cn15" ,  "cn21" ,  "cn22" ,
+          "cn23" ,  "cn31" ,  "cn32" ,  "cn33" ,  "cn34" ,  "cn35" ,  "cn36" ,
+          "cn37" ,  "cn41" ,  "cn42" ,  "cn43" ,  "cn44" ,  "cn45" ,  "cn46" ,
+          "cn50" ,  "cn51" ,  "cn52" ,  "cn53" ,  "cn54" ,  "cn61" ,  "cn62" ,
+          "cn63" ,  "cn64" ,  "cn65" ,  "cn71" ,  "cn91" ,  "cn92" , "cz10a" ,
+         "cz10b" , "cz10c" , "cz10d" , "cz10e" , "cz10f" , "cz611" , "cz612" ,
+         "cz613" , "cz614" , "cz615" , "cz621" , "cz622" , "cz623" , "cz624" ,
+         "cz626" , "cz627" ,  "czjc" ,  "czjm" ,  "czka" ,  "czkr" ,  "czli" ,
+@@ -1095,17 +1095,17 @@ const char* mozilla::intl::Locale::Repla
+          "frt"  ,  "frtf" ,  "fru"  ,  "frv"  ,  "frwf" ,  "fryt" ,  "laxn" ,
+          "lud"  ,  "lug"  ,  "lul"  , "mrnkc" ,  "nlaw" ,  "nlcw" ,  "nlsx" ,
+          "no23" ,  "nzn"  ,  "nzs"  ,  "omba" ,  "omsh" ,  "plds" ,  "plkp" ,
+          "pllb" ,  "plld" ,  "pllu" ,  "plma" ,  "plmz" ,  "plop" ,  "plpd" ,
+          "plpk" ,  "plpm" ,  "plsk" ,  "plsl" ,  "plwn" ,  "plwp" ,  "plzp" ,
+          "shta" , "tteto" , "ttrcm" , "ttwto" , "twkhq" , "twtnq" , "twtpq" ,
+         "twtxq" ,  "usas" ,  "usgu" ,  "usmp" ,  "uspr" ,  "usum" ,  "usvi" ,
+     };
+-    static const char* aliases[147] = {
++    static constexpr const char* aliases[147] = {
+          "cnbj" ,  "cntj" ,  "cnhe" ,  "cnsx" ,  "cnmn" ,  "cnln" ,  "cnjl" ,
+          "cnhl" ,  "cnsh" ,  "cnjs" ,  "cnzj" ,  "cnah" ,  "cnfj" ,  "cnjx" ,
+          "cnsd" ,  "cnha" ,  "cnhb" ,  "cnhn" ,  "cngd" ,  "cngx" ,  "cnhi" ,
+          "cncq" ,  "cnsc" ,  "cngz" ,  "cnyn" ,  "cnxz" ,  "cnsn" ,  "cngs" ,
+          "cnqh" ,  "cnnx" ,  "cnxj" , "twzzzz", "hkzzzz", "mozzzz", "cz110" ,
+         "cz111" , "cz112" , "cz113" , "cz114" , "cz115" , "cz663" , "cz632" ,
+         "cz633" , "cz634" , "cz635" , "cz641" , "cz642" , "cz643" , "cz644" ,
+         "cz646" , "cz647" ,  "cz31" ,  "cz64" ,  "cz41" ,  "cz52" ,  "cz51" ,
+@@ -1121,28 +1121,28 @@ const char* mozilla::intl::Locale::Repla
+          "pl08" ,  "pl10" ,  "pl06" ,  "pl12" ,  "pl14" ,  "pl16" ,  "pl20" ,
+          "pl18" ,  "pl22" ,  "pl26" ,  "pl24" ,  "pl28" ,  "pl30" ,  "pl32" ,
+         "tazzzz", "tttob" , "ttmrc" , "tttob" , "twkhh" , "twtnn" , "twnwt" ,
+         "twtxg" , "aszzzz", "guzzzz", "mpzzzz", "przzzz", "umzzzz", "vizzzz",
+     };
+     return SearchUnicodeReplacement(types, aliases, type);
+   }
+   else if (IsUnicodeKey(key, "tz")) {
+-    static const char* types[50] = {
++    static constexpr const char* types[50] = {
+          "aqams"  ,  "aukns"  ,  "caffs"  ,  "camtr"  ,  "canpg"  ,  "capnt"  ,
+          "cathu"  ,  "cayzf"  ,   "cet"   ,  "cnckg"  ,  "cnhrb"  ,  "cnkhg"  ,
+         "cst6cdt" ,   "cuba"  ,   "eet"   ,  "egypt"  ,   "eire"  ,   "est"   ,
+         "est5edt" , "factory" ,   "gaza"  ,   "gmt0"  , "hongkong",   "hst"   ,
+         "iceland" ,   "iran"  ,  "israel" , "jamaica" ,  "japan"  ,  "libya"  ,
+           "met"   ,  "mncoq"  ,   "mst"   , "mst7mdt" ,  "mxstis" ,  "navajo" ,
+          "poland" , "portugal",   "prc"   , "pst8pdt" ,   "roc"   ,   "rok"   ,
+          "turkey" ,  "uaozh"  ,  "uauzh"  ,   "uct"   ,  "umjon"  , "usnavajo",
+           "wet"   ,   "zulu"  ,
+     };
+-    static const char* aliases[50] = {
++    static constexpr const char* aliases[50] = {
+          "nzakl"  ,  "auhba"  ,  "cawnp"  ,  "cator"  ,  "cator"  ,  "caiql"  ,
+          "cator"  ,  "caedm"  ,  "bebru"  ,  "cnsha"  ,  "cnsha"  ,  "cnurc"  ,
+          "uschi"  ,  "cuhav"  ,  "grath"  ,  "egcai"  ,  "iedub"  ,  "papty"  ,
+          "usnyc"  ,   "unk"   , "gazastrp",   "gmt"   ,  "hkhkg"  ,  "ushnl"  ,
+          "isrey"  ,  "irthr"  , "jeruslm" ,  "jmkin"  ,  "jptyo"  ,  "lytip"  ,
+          "bebru"  ,  "mnuln"  ,  "usphx"  ,  "usden"  ,  "mxtij"  ,  "usden"  ,
+          "plwaw"  ,  "ptlis"  ,  "cnsha"  ,  "uslax"  ,  "twtpe"  ,  "krsel"  ,
+          "trist"  ,  "uaiev"  ,  "uaiev"  ,   "utc"   ,  "ushnl"  ,  "usden"  ,

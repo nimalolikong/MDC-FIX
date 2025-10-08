@@ -1,0 +1,44 @@
+diff --git a/js/src/frontend/BytecodeEmitter.cpp b/js/src/frontend/BytecodeEmitter.cpp
+--- a/js/src/frontend/BytecodeEmitter.cpp
++++ b/js/src/frontend/BytecodeEmitter.cpp
+@@ -3,16 +3,20 @@
+  * This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ /*
+  * JS bytecode generation.
+  */
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++#include <xmmintrin.h>
++#endif
++
+ #include "frontend/BytecodeEmitter.h"
+ 
+ #include "mozilla/Casting.h"    // mozilla::AssertedCast
+ #include "mozilla/DebugOnly.h"  // mozilla::DebugOnly
+ #include "mozilla/FloatingPoint.h"  // mozilla::NumberEqualsInt32, mozilla::NumberIsInt32
+ #include "mozilla/HashTable.h"  // mozilla::HashSet
+ #include "mozilla/Maybe.h"      // mozilla::{Maybe,Nothing,Some}
+ #include "mozilla/Saturate.h"
+@@ -4333,16 +4337,19 @@ static inline JSOp CompoundAssignmentPar
+       [[fallthrough]];
+     default:
+       MOZ_CRASH("unexpected compound assignment op");
+   }
+ }
+ 
+ bool BytecodeEmitter::emitAssignmentOrInit(ParseNodeKind kind, ParseNode* lhs,
+                                            ParseNode* rhs) {
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++  _mm_prefetch((char *)lhs, _MM_HINT_T0);
++#endif
+   JSOp compoundOp = CompoundAssignmentParseNodeKindToJSOp(kind);
+   bool isCompound = compoundOp != JSOp::Nop;
+   bool isInit = kind == ParseNodeKind::InitExpr;
+ 
+   // We estimate the number of properties this could create
+   // if used as constructor merely by counting this.foo = assignment
+   // or init expressions;
+   //

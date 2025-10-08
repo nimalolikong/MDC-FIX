@@ -1,0 +1,19 @@
+diff --git a/xpcom/io/nsILocalFileWin.idl b/xpcom/io/nsILocalFileWin.idl
+--- a/xpcom/io/nsILocalFileWin.idl
++++ b/xpcom/io/nsILocalFileWin.idl
+@@ -90,9 +90,15 @@ interface nsILocalFileWin : nsIFile
+     /**
+      * Set or clear the Windows specific file attributes of this file.
+      *
+      * @param aSetAttrs   Attribute to set on the file.
+      * @param aClearAttrs Attributes to clear on the file.
+      */
+     [noscript] void setWindowsFileAttributes(in unsigned long aSetAttrs,
+                                              in unsigned long aClearAttrs);
++
++    /**
++     * Using nsIFile::equals.
++     */
++    [noscript, notxpcom, nostdcall] readonly attribute voidPtr pathMoniker;
++    [noscript, notxpcom, nostdcall] readonly attribute unsigned long pathMonikerProcessId;
+ };

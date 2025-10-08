@@ -1,0 +1,112 @@
+diff --git a/image/SurfaceFilters.h b/image/SurfaceFilters.h
+index 92c406386a..7decaf1588 100644
+--- a/image/SurfaceFilters.h
++++ b/image/SurfaceFilters.h
+@@ -1098,16 +1098,29 @@
+ /**
+  * A configuration struct for ADAM7InterpolatingFilter.
+  */
+ struct ADAM7InterpolatingConfig {
+   template <typename Next>
+   using Filter = ADAM7InterpolatingFilter<Next>;
+ };
+ 
++namespace detail {
++
++inline constexpr int32_t strideImportantRow[] = {1, 8, 8, 4, 4, 2, 2, 1};
++inline constexpr size_t strideFinalPixel[] = {1, 8, 4, 4, 2, 2, 1, 1};
++
++inline constexpr float stride8Weights[] = {1.0f,     7 / 8.0f, 6 / 8.0f, 5 / 8.0f,
++                                           4 / 8.0f, 3 / 8.0f, 2 / 8.0f, 1 / 8.0f};
++inline constexpr float stride4Weights[] = {1.0f, 3 / 4.0f, 2 / 4.0f, 1 / 4.0f};
++inline constexpr float stride2Weights[] = {1.0f, 1 / 2.0f};
++inline constexpr float stride1Weights[] = {1.0f};
++
++}  // namespace detail
++
+ /**
+  * ADAM7InterpolatingFilter performs bilinear interpolation over an ADAM7
+  * interlaced image.
+  *
+  * ADAM7 breaks up the image into 8x8 blocks. On each of the 7 passes, a new set
+  * of pixels in each block receives their final values, according to the
+  * following pattern:
+  *
+@@ -1362,19 +1375,17 @@
+     return uint8_t(aByteA * aWeight + aByteB * (1.0f - aWeight));
+   }
+ 
+   static int32_t ImportantRowStride(uint8_t aPass) {
+     MOZ_ASSERT(0 < aPass && aPass <= 7, "Invalid pass");
+ 
+     // The stride between important rows for each pass, with a dummy value for
+     // the nonexistent pass 0.
+-    static int32_t strides[] = {1, 8, 8, 4, 4, 2, 2, 1};
+-
+-    return strides[aPass];
++    return detail::strideImportantRow[aPass];
+   }
+ 
+   static bool IsImportantRow(int32_t aRow, uint8_t aPass) {
+     MOZ_ASSERT(aRow >= 0);
+ 
+     // Whether the row is important comes down to divisibility by the stride for
+     // this pass, which is always a power of 2, so we can check using a mask.
+     int32_t mask = ImportantRowStride(aPass) - 1;
+@@ -1390,19 +1401,17 @@
+     return lastRow - (lastRow & mask);
+   }
+ 
+   static size_t FinalPixelStride(uint8_t aPass) {
+     MOZ_ASSERT(0 < aPass && aPass <= 7, "Invalid pass");
+ 
+     // The stride between the final pixels in important rows for each pass, with
+     // a dummy value for the nonexistent pass 0.
+-    static size_t strides[] = {1, 8, 4, 4, 2, 2, 1, 1};
+-
+-    return strides[aPass];
++    return detail::strideFinalPixel[aPass];
+   }
+ 
+   static size_t LastFinalPixel(int32_t aWidth, uint8_t aPass) {
+     MOZ_ASSERT(aWidth >= 0);
+ 
+     // Again, we can use the mask trick above to find the last important pixel.
+     int32_t lastColumn = aWidth - 1;
+     size_t mask = FinalPixelStride(aPass) - 1;
+@@ -1410,31 +1419,25 @@
+   }
+ 
+   static const float* InterpolationWeights(int32_t aStride) {
+     // Precalculated interpolation weights. These are used to interpolate
+     // between final pixels or between important rows. Although no interpolation
+     // is actually applied to the previous final pixel or important row value,
+     // the arrays still start with 1.0f, which is always skipped, primarily
+     // because otherwise |stride1Weights| would have zero elements.
+-    static float stride8Weights[] = {1.0f,     7 / 8.0f, 6 / 8.0f, 5 / 8.0f,
+-                                     4 / 8.0f, 3 / 8.0f, 2 / 8.0f, 1 / 8.0f};
+-    static float stride4Weights[] = {1.0f, 3 / 4.0f, 2 / 4.0f, 1 / 4.0f};
+-    static float stride2Weights[] = {1.0f, 1 / 2.0f};
+-    static float stride1Weights[] = {1.0f};
+-
+     switch (aStride) {
+       case 8:
+-        return stride8Weights;
++        return detail::stride8Weights;
+       case 4:
+-        return stride4Weights;
++        return detail::stride4Weights;
+       case 2:
+-        return stride2Weights;
++        return detail::stride2Weights;
+       case 1:
+-        return stride1Weights;
++        return detail::stride1Weights;
+       default:
+         MOZ_CRASH();
+     }
+   }
+ 
+   Next mNext;  /// The next SurfaceFilter in the chain.
+ 
+   UniquePtr<uint8_t[]>

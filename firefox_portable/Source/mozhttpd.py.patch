@@ -1,0 +1,21 @@
+diff --git a/testing/mozbase/mozhttpd/mozhttpd/mozhttpd.py b/testing/mozbase/mozhttpd/mozhttpd/mozhttpd.py
+--- a/testing/mozbase/mozhttpd/mozhttpd/mozhttpd.py
++++ b/testing/mozbase/mozhttpd/mozhttpd/mozhttpd.py
+@@ -69,16 +69,17 @@ class RequestHandler(SimpleHTTPRequestHa
+     proxy_host_dirs = False
+     request_log = []
+     log_requests = False
+     request = None
+ 
+     def __init__(self, *args, **kwargs):
+         SimpleHTTPRequestHandler.__init__(self, *args, **kwargs)
+         self.extensions_map[".svg"] = "image/svg+xml"
++        self.extensions_map[".mjs"] = "application/javascript"
+ 
+     def _try_handler(self, method):
+         if self.log_requests:
+             self.request_log.append(
+                 {"method": method, "path": self.request.path, "time": time.time()}
+             )
+ 
+         handlers = [

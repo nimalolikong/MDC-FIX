@@ -1,0 +1,51 @@
+diff --git a/layout/generic/nsGridContainerFrame.cpp b/layout/generic/nsGridContainerFrame.cpp
+--- a/layout/generic/nsGridContainerFrame.cpp
++++ b/layout/generic/nsGridContainerFrame.cpp
+@@ -1,16 +1,20 @@
+ /* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+ /* vim: set ts=8 sts=2 et sw=2 tw=80: */
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ /* rendering object for CSS "display: grid | inline-grid" */
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++#include <xmmintrin.h>
++#endif
++
+ #include "nsGridContainerFrame.h"
+ 
+ #include <stdlib.h>  // for div()
+ 
+ #include <functional>
+ #include <type_traits>
+ 
+ #include "fmt/format.h"
+@@ -10270,18 +10274,25 @@ void nsGridContainerFrame::BuildDisplayL
+   OrderState order =
+       HasAnyStateBits(NS_STATE_GRID_NORMAL_FLOW_CHILDREN_IN_CSS_ORDER)
+           ? OrderState::Ordered
+           : OrderState::Unordered;
+   CSSOrderAwareFrameIterator iter(
+       this, FrameChildListID::Principal,
+       CSSOrderAwareFrameIterator::ChildFilter::IncludeAll, order);
+   const auto flags = DisplayFlagsForFlexOrGridItem();
+-  for (; !iter.AtEnd(); iter.Next()) {
++  for (; !iter.AtEnd();) {
+     nsIFrame* child = *iter;
++    iter.Next();
++    if (!iter.AtEnd()) {
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++      _mm_prefetch((char *)*iter, _MM_HINT_T0);
++      _mm_prefetch((char *)*iter + 64, _MM_HINT_T0);
++    }
++#endif
+     BuildDisplayListForChild(aBuilder, child, aLists, flags);
+   }
+ }
+ 
+ bool nsGridContainerFrame::DrainSelfOverflowList() {
+   return DrainAndMergeSelfOverflowList();
+ }
+ 

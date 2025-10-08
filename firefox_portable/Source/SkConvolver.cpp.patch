@@ -1,0 +1,51 @@
+diff --git a/gfx/2d/SkConvolver.cpp b/gfx/2d/SkConvolver.cpp
+--- a/gfx/2d/SkConvolver.cpp
++++ b/gfx/2d/SkConvolver.cpp
+@@ -218,16 +218,22 @@ void convolve_vertically_avx2(const int1
+                               uint8_t* const* srcRows, int width, uint8_t* out,
+                               bool hasAlpha);
+ void convolve_horizontally_sse2(const unsigned char* srcData,
+                                 const SkConvolutionFilter1D& filter,
+                                 unsigned char* outRow, bool hasAlpha);
+ void convolve_vertically_sse2(const int16_t* filter, int filterLen,
+                               uint8_t* const* srcRows, int width, uint8_t* out,
+                               bool hasAlpha);
++void convolve_horizontally_ssse3(const unsigned char* srcData,
++                                 const SkConvolutionFilter1D& filter,
++                                 unsigned char* outRow, bool hasAlpha);
++void convolve_horizontally_avx2(const unsigned char* srcData,
++                                const SkConvolutionFilter1D& filter,
++                                unsigned char* outRow, bool hasAlpha);
+ #elif defined(USE_NEON)
+ void convolve_horizontally_neon(const unsigned char* srcData,
+                                 const SkConvolutionFilter1D& filter,
+                                 unsigned char* outRow, bool hasAlpha);
+ void convolve_vertically_neon(const int16_t* filter, int filterLen,
+                               uint8_t* const* srcRows, int width, uint8_t* out,
+                               bool hasAlpha);
+ #endif
+@@ -237,16 +243,24 @@ void convolve_horizontally(const unsigne
+                            unsigned char* outRow, SurfaceFormat format) {
+   if (format == SurfaceFormat::A8) {
+     ConvolveHorizontallyA8(srcData, filter, outRow);
+     return;
+   }
+ 
+   bool hasAlpha = !IsOpaque(format);
+ #ifdef USE_SSE2
++  if (mozilla::supports_avx2()) {
++    convolve_horizontally_avx2(srcData, filter, outRow, hasAlpha);
++    return;
++  }
++  if (mozilla::supports_ssse3()) {
++    convolve_horizontally_ssse3(srcData, filter, outRow, hasAlpha);
++    return;
++  }
+   if (mozilla::supports_sse2()) {
+     convolve_horizontally_sse2(srcData, filter, outRow, hasAlpha);
+     return;
+   }
+ #elif defined(USE_NEON)
+   if (mozilla::supports_neon()) {
+     convolve_horizontally_neon(srcData, filter, outRow, hasAlpha);
+     return;

@@ -1,0 +1,45 @@
+diff --git a/dom/media/webrtc/sdp/ParsingResultComparer.cpp b/dom/media/webrtc/sdp/ParsingResultComparer.cpp
+--- a/dom/media/webrtc/sdp/ParsingResultComparer.cpp
++++ b/dom/media/webrtc/sdp/ParsingResultComparer.cpp
+@@ -10,16 +10,17 @@
+ #include "sdp/RsdparsaSdpParser.h"
+ 
+ #include <string>
+ #include <ostream>
+ #include <regex>
+ 
+ #include "mozilla/Assertions.h"
+ #include "mozilla/Logging.h"
++#include "mozilla/ToString.h"
+ 
+ using mozilla::LogLevel;
+ static mozilla::LazyLogModule sSdpDiffLogger("sdpdiff_logger");
+ 
+ #define LOGD(msg) MOZ_LOG(sSdpDiffLogger, LogLevel::Debug, msg)
+ #define LOGE(msg) MOZ_LOG(sSdpDiffLogger, LogLevel::Error, msg)
+ 
+ #define LOG_EXPECT(result, expect, msg)                         \
+@@ -31,23 +32,16 @@ static mozilla::LazyLogModule sSdpDiffLo
+       LOGE(msg);                                                \
+     }                                                           \
+   }
+ 
+ namespace mozilla {
+ 
+ using AttributeType = SdpAttribute::AttributeType;
+ 
+-template <typename T>
+-std::string ToString(const T& serializable) {
+-  std::ostringstream os;
+-
+-  os << serializable;
+-  return os.str();
+-}
+ bool ParsingResultComparer::Compare(const Results& aResA, const Results& aResB,
+                                     const std::string& aOriginalSdp,
+                                     const SdpPref::AlternateParseModes& aMode) {
+   MOZ_ASSERT(aResA, "aResA must not be a nullptr");
+   MOZ_ASSERT(aResB, "aResB must not be a nullptr");
+   MOZ_ASSERT(aResA->ParserName() != aResB->ParserName(),
+              "aResA and aResB must be from different parsers");
+ 

@@ -1,0 +1,35 @@
+diff --git a/dom/promise/Promise.h b/dom/promise/Promise.h
+--- a/dom/promise/Promise.h
++++ b/dom/promise/Promise.h
+@@ -121,22 +121,28 @@ class Promise : public SupportsWeakPtr, 
+ 
+   void MaybeReject(const RefPtr<MediaStreamError>& aArg);
+ 
+   void MaybeRejectWithUndefined();
+ 
+   void MaybeResolveWithClone(JSContext* aCx, JS::Handle<JS::Value> aValue);
+   void MaybeRejectWithClone(JSContext* aCx, JS::Handle<JS::Value> aValue);
+ 
++  static void MOZ_NEVER_INLINE
++  MaybeRejectWithDOMException_impl(Promise* aPromise, nsresult aErrorName,
++                                   const nsACString& aMessage) {
++    ErrorResult res;
++    res.ThrowDOMException(aErrorName, aMessage);
++    aPromise->MaybeReject(std::move(res));
++  }
++
+   // Facilities for rejecting with various spec-defined exception values.
+ #define DOMEXCEPTION(name, err)                                   \
+   inline void MaybeRejectWith##name(const nsACString& aMessage) { \
+-    ErrorResult res;                                              \
+-    res.Throw##name(aMessage);                                    \
+-    MaybeReject(std::move(res));                                  \
++    MaybeRejectWithDOMException_impl(this, err, aMessage);        \
+   }                                                               \
+   template <int N>                                                \
+   void MaybeRejectWith##name(const char(&aMessage)[N]) {          \
+     MaybeRejectWith##name(nsLiteralCString(aMessage));            \
+   }
+ 
+ #include "mozilla/dom/DOMExceptionNames.h"
+ 

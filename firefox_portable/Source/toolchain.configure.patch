@@ -1,0 +1,115 @@
+diff --git a/build/moz.configure/toolchain.configure b/build/moz.configure/toolchain.configure
+--- a/build/moz.configure/toolchain.configure
++++ b/build/moz.configure/toolchain.configure
+@@ -668,31 +668,31 @@ def check_compiler(configure_cache, comp
+     if language != info.language:
+         raise FatalCheckError(
+             "`%s` is not a %s compiler." % (quote(*compiler), language)
+         )
+ 
+     # Note: We do a strict version check because there sometimes are backwards
+     # incompatible changes in the standard, and not all code that compiles as
+     # C17 compiles as C23.
+-    c17_version = 201710
+-    if info.language == "C" and info.language_version != c17_version:
++    c23_version = 202311
++    if info.language == "C" and info.language_version != c23_version:
+         if info.type == "clang-cl":
+             flags.append("-Xclang")
+-        flags.append("-std=gnu17")
+-
+-    cxx17_version = 201703
++        flags.append("-std=gnu23")
++
++    cxx20_version = 202002
+     if info.language == "C++":
+-        if info.language_version != cxx17_version:
+-            # MSVC headers include C++17 features, but don't guard them
++        if info.language_version != cxx20_version:
++            # MSVC headers include C++20 features, but don't guard them
+             # with appropriate checks.
+             if info.type == "clang-cl":
+-                flags.append("-std:c++17")
++                flags.append("-std:c++20")
+             else:
+-                flags.append("-std=gnu++17")
++                flags.append("-std=gnu++20")
+ 
+     # Check compiler target
+     # --------------------------------------------------------------------
+     has_target = False
+     if target.os == "Android" and android_version:
+         # This makes clang define __ANDROID_API__ and use versioned library
+         # directories from the NDK.
+         toolchain = "%s%d" % (target.toolchain, android_version)
+@@ -940,17 +940,25 @@ with only_when(target_is_windows):
+     def dxc_task_name(target):
+         return "dxc-" + target.cpu + "-pc-windows-msvc"
+ 
+     @depends_if(bootstrap_path(dxc_task_name))
+     def dxc_dll_path(bootstrap):
+         return os.path.join(bootstrap, "dxcompiler.dll")
+ 
+ 
+-clang_search_path = bootstrap_search_path("clang/bin")
++option(env="CLANG_DIR", nargs=1, help="Path to clang executables")
++@depends(
++    "CLANG_DIR",
++    bootstrap_search_path("clang/bin", when=depends("CLANG_DIR")(lambda x: not x)),
++)
++def get_clang_path(clang_dir, bootstrap_clang_dir):
++    return clang_dir if clang_dir else bootstrap_clang_dir
++
++clang_search_path = get_clang_path
+ 
+ 
+ @depends(
+     bootstrap_path("rustc/bin", when=moz_automation),
+     original_path,
+ )
+ @imports("os")
+ @imports(_from="os", _import="environ")
+@@ -3002,19 +3010,21 @@ def security_hardening_cflags(
+             and c_compiler.version >= "8"
+             and (target.cpu != "aarch64" or c_compiler.version >= "8.0.1")
+         ):
+             if target.cpu == "aarch64" and c_compiler.version >= "10.0.0":
+                 # The added checks in clang 10 make arm64 builds crash. (Bug 1639318)
+                 flags.append("-guard:cf,nochecks")
+             else:
+                 flags.append("-guard:cf")
+-            # nolongjmp is needed because clang doesn't emit the CFG tables of
+-            # setjmp return addresses https://bugs.llvm.org/show_bug.cgi?id=40057
+-            ldflags.append("-guard:cf,nolongjmp")
++
++            if c_compiler.version >= "13.0.0":
++                ldflags.append("-guard:cf")
++            else:
++                ldflags.append("-guard:cf,nolongjmp")
+ 
+     # ----------------------------------------------------------
+     # If ASAN _is_ on, disable FORTIFY_SOURCE just to be safe
+     if asan:
+         flags.append("-D_FORTIFY_SOURCE=0")
+ 
+     # fno-common -----------------------------------------
+     # Do not merge variables for ASAN; can detect some subtle bugs
+@@ -3845,17 +3855,17 @@ def is_intel_target(target):
+ 
+ @depends(target)
+ def is_aarch64_target(target):
+     return target.cpu == "aarch64"
+ 
+ 
+ set_config("MMX_FLAGS", ["-mmmx"])
+ set_config("SSE_FLAGS", ["-msse"])
+-set_config("SSE2_FLAGS", ["-msse2"])
++set_config("SSE2_FLAGS", ["-msse3"])
+ set_config("SSSE3_FLAGS", ["-mssse3"])
+ set_config("SSE4_2_FLAGS", ["-msse4.2"])
+ set_config("FMA_FLAGS", ["-mfma"])
+ set_config("AVX2_FLAGS", ["-mavx2"])
+ set_config(
+     "AVXVNNI_FLAGS",
+     ["-mavxvnni"],
+     try_compile(

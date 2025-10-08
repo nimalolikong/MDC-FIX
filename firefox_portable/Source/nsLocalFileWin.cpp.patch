@@ -1,0 +1,180 @@
+diff --git a/xpcom/io/nsLocalFileWin.cpp b/xpcom/io/nsLocalFileWin.cpp
+--- a/xpcom/io/nsLocalFileWin.cpp
++++ b/xpcom/io/nsLocalFileWin.cpp
+@@ -27,16 +27,17 @@
+ #include "nsString.h"
+ #include "nsReadableUtils.h"
+ 
+ #include <direct.h>
+ #include <fileapi.h>
+ #include <windows.h>
+ #include <shlwapi.h>
+ #include <aclapi.h>
++#include <filesystem>
+ 
+ #include "shellapi.h"
+ #include "shlguid.h"
+ 
+ #include <io.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <mbstring.h>
+@@ -872,17 +873,17 @@ class nsDirEnumerator final : public nsS
+ NS_IMPL_ISUPPORTS_INHERITED(nsDirEnumerator, nsSimpleEnumerator,
+                             nsIDirectoryEnumerator)
+ 
+ //-----------------------------------------------------------------------------
+ // nsLocalFile <public>
+ //-----------------------------------------------------------------------------
+ 
+ nsLocalFile::nsLocalFile()
+-    : mDirty(true), mResolveDirty(true), mUseDOSDevicePathSyntax(false) {}
++    : mDirty(true), mPathMonikerProcessId(0), mResolveDirty(true), mUseDOSDevicePathSyntax(false) {}
+ 
+ nsresult nsLocalFile::nsLocalFileConstructor(const nsIID& aIID,
+                                              void** aInstancePtr) {
+   if (NS_WARN_IF(!aInstancePtr)) {
+     return NS_ERROR_INVALID_ARG;
+   }
+ 
+   nsLocalFile* inst = new nsLocalFile();
+@@ -901,16 +902,17 @@ nsresult nsLocalFile::nsLocalFileConstru
+ NS_IMPL_ISUPPORTS(nsLocalFile, nsIFile, nsILocalFileWin)
+ 
+ //-----------------------------------------------------------------------------
+ // nsLocalFile <private>
+ //-----------------------------------------------------------------------------
+ 
+ nsLocalFile::nsLocalFile(const nsLocalFile& aOther)
+     : mDirty(true),
++      mPathMonikerProcessId(0),
+       mResolveDirty(true),
+       mUseDOSDevicePathSyntax(aOther.mUseDOSDevicePathSyntax),
+       mWorkingPath(aOther.mWorkingPath) {}
+ 
+ nsresult nsLocalFile::ResolveSymlink() {
+   std::wstring workingPath(mWorkingPath.Data());
+   if (!widget::WinUtils::ResolveJunctionPointsAndSymLinks(workingPath)) {
+     return NS_ERROR_FAILURE;
+@@ -1644,16 +1646,25 @@ nsLocalFile::GetPath(nsAString& aResult)
+ 
+ NS_IMETHODIMP
+ nsLocalFile::GetCanonicalPath(nsAString& aResult) {
+   EnsureShortPath();
+   aResult.Assign(mShortWorkingPath);
+   return NS_OK;
+ }
+ 
++void* nsLocalFile::GetPathMoniker() {
++  EnsurePathMoniker();
++  return mWorkingPathMonikerPtr ? mWorkingPathMonikerPtr.GetInterfacePtr() : nullptr;
++}
++
++uint32_t nsLocalFile::GetPathMonikerProcessId() {
++  return mPathMonikerProcessId;
++}
++
+ typedef struct {
+   WORD wLanguage;
+   WORD wCodePage;
+ } LANGANDCODEPAGE;
+ 
+ NS_IMETHODIMP
+ nsLocalFile::GetVersionInfoField(const char* aField, nsAString& aResult) {
+   nsresult rv = NS_ERROR_FAILURE;
+@@ -3121,16 +3132,28 @@ nsLocalFile::Equals(nsIFile* aInFile, bo
+       };
+ 
+   if (equalPath(workingPath, inFilePath, removePathPrefix,
+                 removeInPathPrefix)) {
+     *aResult = true;
+     return NS_OK;
+   }
+ 
++  EnsurePathMoniker();
++  if (mWorkingPathMonikerPtr && mPathMonikerProcessId != 0) {
++    IMoniker* inPathMonikerPtr = (IMoniker*)lf->GetPathMoniker();
++    if (inPathMonikerPtr) {
++      if (mPathMonikerProcessId == lf->GetPathMonikerProcessId()) {
++        *aResult = (S_OK == mWorkingPathMonikerPtr->IsEqual(inPathMonikerPtr));
++
++        return NS_OK;
++      }
++    }
++  }
++
+   EnsureShortPath();
+   lf->GetCanonicalPath(inFilePath);
+   workingPath = mShortWorkingPath;
+   *aResult =
+       equalPath(workingPath, inFilePath, removePathPrefix, removeInPathPrefix);
+ 
+   return NS_OK;
+ }
+@@ -3649,16 +3672,66 @@ void nsLocalFile::EnsureShortPath() {
+   // wide characters not including null termination is returned.
+   if (lengthNeeded != 0 && lengthNeeded < std::size(shortPath)) {
+     mShortWorkingPath.Assign(shortPath);
+   } else {
+     mShortWorkingPath.Assign(mWorkingPath);
+   }
+ }
+ 
++typedef enum _RTL_PATH_TYPE {
++  RtlPathTypeUnknown,
++  RtlPathTypeUncAbsolute,
++  RtlPathTypeDriveAbsolute,
++  RtlPathTypeDriveRelative,
++  RtlPathTypeRooted,
++  RtlPathTypeRelative,
++  RtlPathTypeLocalDevice,
++  RtlPathTypeRootLocalDevice,
++} RTL_PATH_TYPE;
++
++extern "C" __declspec(dllimport)
++RTL_PATH_TYPE __stdcall RtlDetermineDosPathNameType_U(PCWSTR);
++
++void nsLocalFile::EnsurePathMoniker() {
++  if (nullptr == mWorkingPathMonikerPtr) {
++    mPathMonikerProcessId = 0;
++
++    const WCHAR* path = mWorkingPath.get();
++    if (path &&
++        *path &&
++        ::RtlDetermineDosPathNameType_U(path) == RtlPathTypeDriveAbsolute &&
++        wcschr(path, L'~') == nullptr) {
++
++      const DWORD attributes = ::GetFileAttributesW(path);
++      if (INVALID_FILE_ATTRIBUTES != attributes) {
++
++        std::filesystem::path dirpath = path;
++        if (!(attributes & FILE_ATTRIBUTE_DIRECTORY)) {
++          dirpath = dirpath.parent_path();
++        }
++
++        for (const auto& p : dirpath) {
++          if (p == L"." || p == L"..") {
++            return;
++          }
++        }
++
++        BSTR bspath = ::SysAllocString(path);
++        if (bspath) {
++          if (SUCCEEDED(::CreateFileMoniker(bspath, &mWorkingPathMonikerPtr))) {
++            mPathMonikerProcessId = ::GetCurrentProcessId();
++          }
++          ::SysFreeString(bspath);
++        }
++      }
++    }
++  }
++}
++
+ NS_IMPL_ISUPPORTS_INHERITED(nsDriveEnumerator, nsSimpleEnumerator,
+                             nsIDirectoryEnumerator)
+ 
+ nsDriveEnumerator::nsDriveEnumerator(bool aUseDOSDevicePathSyntax)
+     : mUseDOSDevicePathSyntax(aUseDOSDevicePathSyntax) {}
+ 
+ nsDriveEnumerator::~nsDriveEnumerator() {}
+ 

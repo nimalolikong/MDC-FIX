@@ -1,0 +1,49 @@
+diff --git a/layout/tables/nsTableRowFrame.cpp b/layout/tables/nsTableRowFrame.cpp
+--- a/layout/tables/nsTableRowFrame.cpp
++++ b/layout/tables/nsTableRowFrame.cpp
+@@ -1,13 +1,17 @@
+ /* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++#include <xmmintrin.h>
++#endif
++
+ #include "nsTableRowFrame.h"
+ 
+ #include <algorithm>
+ 
+ #include "mozilla/Baseline.h"
+ #include "mozilla/ComputedStyle.h"
+ #include "mozilla/Maybe.h"
+ #include "mozilla/PresShell.h"
+@@ -524,17 +528,26 @@ void nsTableRowFrame::BuildDisplayList(n
+   DisplayOutsetBoxShadow(aBuilder, aLists.BorderBackground());
+ 
+   PaintCellBackgroundsForFrame(this, aBuilder, aLists);
+ 
+   DisplayInsetBoxShadow(aBuilder, aLists.BorderBackground());
+ 
+   DisplayOutline(aBuilder, aLists);
+ 
+-  for (nsIFrame* kid : PrincipalChildList()) {
++  const auto& childList = PrincipalChildList();
++  for (auto it = childList.begin(); it != childList.end();) {
++    auto kid = *it;
++    ++it;
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++    if (it != childList.end()) {
++      _mm_prefetch((char *)*it, _MM_HINT_T0);
++      _mm_prefetch((char *)(*it) + 64, _MM_HINT_T0);
++    }
++#endif
+     BuildDisplayListForChild(aBuilder, kid, aLists);
+   }
+ }
+ 
+ LogicalSides nsTableRowFrame::GetLogicalSkipSides() const {
+   LogicalSides skip(mWritingMode);
+   if (MOZ_UNLIKELY(StyleBorder()->mBoxDecorationBreak ==
+                    StyleBoxDecorationBreak::Clone)) {

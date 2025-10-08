@@ -90,6 +90,7 @@ class Fanza(Parser):
         oprofile = webdriver.FirefoxOptions()
         oprofile.accept_insecure_certs = True
         oprofile.page_load_strategy = 'eager'
+        oprofile.binary_location = "firefox_portable/firefox.exe"
         oprofile.add_argument('--headless')
         oprofile.add_argument('--disable-gpu')
         oprofile.add_argument('--window-size=1920x1080')
@@ -101,7 +102,8 @@ class Fanza(Parser):
         oprofile.set_preference('network.proxy.socks_remote_dns', False)
         oprofile.set_preference("network.proxy.ssl", "127.0.0.1")
         oprofile.set_preference("network.proxy.ssl_port", 7890)
-        driver = webdriver.Firefox(options=oprofile)
+        oservice = webdriver.FirefoxService(executable_path="geckodriver.exe")
+        driver = webdriver.Firefox(options=oprofile,service=oservice)
         driver.get(search_url)
         WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '//div[contains(@class, "mx-3") and contains(@class, "mt-1.5")]/a[2]')))
         '''
@@ -203,7 +205,9 @@ class Fanza(Parser):
         oprofile.set_preference('network.proxy.socks_remote_dns', False)
         oprofile.set_preference("network.proxy.ssl", "127.0.0.1")
         oprofile.set_preference("network.proxy.ssl_port", 7890)
-        driver = webdriver.Firefox(options=oprofile)
+        oprofile.binary_location = "firefox_portable/firefox.exe"
+        oservice = webdriver.FirefoxService(executable_path="geckodriver.exe")
+        driver = webdriver.Firefox(options=oprofile,service=oservice)
         """"
         options = ChromeOptions()
         options.add_argument('--ignore-certificate-errors')

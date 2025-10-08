@@ -1,0 +1,67 @@
+diff --git a/config/makefiles/rust.mk b/config/makefiles/rust.mk
+--- a/config/makefiles/rust.mk
++++ b/config/makefiles/rust.mk
+@@ -295,30 +295,43 @@ RUSTC_BOOTSTRAP := $(RUSTC_BOOTSTRAP),en
+ endif
+ export RUSTC_BOOTSTRAP
+ endif
+ 
+ target_rust_ltoable := force-cargo-library-build $(ADD_RUST_LTOABLE)
+ target_rust_nonltoable := force-cargo-test-run force-cargo-program-build
+ 
+ ifdef MOZ_PGO_RUST
++IS_CC_VERSION_GE_18_1 := $(shell echo $(CC_VERSION) | awk -F. '{if ($$1 > 18 || ($$1 == 18 && $$2 >= 1)) print "1"; else print "0"}')
+ ifdef MOZ_PROFILE_GENERATE
+-rust_pgo_flags := -C profile-generate=$(topobjdir)
++rust_pgo_flags := -C profile-generate
+ ifeq (1,$(words $(filter 5.% 6.% 7.% 8.% 9.% 10.% 11.%,$(CC_VERSION) $(RUSTC_LLVM_VERSION))))
+ # Disable value profiling when:
+ # (RUSTC_LLVM_VERSION < 12 and CC_VERSION >= 12) or (RUSTC_LLVM_VERSION >= 12 and CC_VERSION < 12)
+ rust_pgo_flags += -C llvm-args=--disable-vp=true
+ endif
+ # The C compiler may be passed extra llvm flags for PGO that we also want to pass to rust as well.
+ # In PROFILE_GEN_CFLAGS, they look like "-mllvm foo", and we want "-C llvm-args=foo", so first turn
+ # "-mllvm foo" into "-mllvm:foo" so that it becomes a unique argument, that we can then filter for,
+ # excluding other flags, and then turn into the right string.
+ rust_pgo_flags += $(patsubst -mllvm:%,-C llvm-args=%,$(filter -mllvm:%,$(subst -mllvm ,-mllvm:,$(PROFILE_GEN_CFLAGS))))
++ifeq ($(IS_CC_VERSION_GE_18_1),1)
++rust_pgo_flags += -C llvm-args=--instrprof-atomic-counter-update-all=true
++endif
+ else # MOZ_PROFILE_USE
+ rust_pgo_flags := -C profile-use=$(PGO_PROFILE_PATH)
++ifdef ENABLE_CSPGO
++rust_pgo_flags += -Clink-arg=-Wl,-lto-cs-profile-file:$(PGO_PROFILE_PATH)
++ifdef MOZ_CS_PROFILE_GENERATE
++rust_pgo_flags += -Ccs-profile-generate -Clink-arg=-Wl,-lto-cs-profile-generate -Clink-arg=-Wl,--whole-archive -Clink-arg=-force:multiple
++ifeq ($(IS_CC_VERSION_GE_18_1),1)
++rust_pgo_flags += -C llvm-args=--instrprof-atomic-counter-update-all=true
++endif
++endif # MOZ_CS_PROFILE_GENERATE
++endif # ENABLE_CSPGO
+ endif
+ endif
+ 
+ # Work around https://github.com/rust-lang/rust/issues/112480
+ ifdef MOZ_DEBUG_RUST
+ ifneq (,$(filter i686-pc-windows-%,$(RUST_TARGET)))
+ RUSTFLAGS += -Zmir-enable-passes=-CheckAlignment
+ RUSTC_BOOTSTRAP := 1
+@@ -413,17 +426,17 @@ endif
+ # Finally, we also remove the -Wl,--build-id=uuid flag when it's in
+ # the LDFLAGS. The flag was chosen over the default (build-id=sha1)
+ # in developer builds, because for libxul, it's faster. But it's also
+ # non-deterministic. So when the rust compiler produces procedural
+ # macros as libraries, they're not reproducible. Those procedural
+ # macros then end up as dependencies of other crates, and their
+ # non-reproducibility leads to sccache transitively having cache
+ # misses.
+-$(TARGET_RECIPES): MOZ_CARGO_WRAP_LDFLAGS:=$(filter-out -fsanitize=cfi% -framework Cocoa -lobjc AudioToolbox ExceptionHandling -fprofile-% -Wl$(COMMA)--build-id=uuid,$(LDFLAGS))
++$(TARGET_RECIPES): MOZ_CARGO_WRAP_LDFLAGS:=$(filter-out -fsanitize=cfi% -framework Cocoa -lobjc AudioToolbox ExceptionHandling -fprofile-% -lto-cs-profile-generate -wholearchive:clang_rt.profile-% -Wl$(COMMA)--build-id=uuid,$(LDFLAGS))
+ 
+ # When building with sanitizer, rustc links its own runtime, which conflicts
+ # with the one that passing -fsanitize=* to the linker would add.
+ # Ideally, we'd always do this filtering, but because the flags may also apply
+ # to build scripts because cargo doesn't allow the distinction, we only filter
+ # when building programs, except when using thread sanitizer where we filter
+ # everywhere.
+ ifneq (,$(filter -Zsanitizer=%,$(RUSTFLAGS)))

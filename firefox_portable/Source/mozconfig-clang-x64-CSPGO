@@ -1,0 +1,151 @@
+
+
+MOZ_OBJDIR=$topsrcdir/FirefoxObjX64
+mk_add_options MOZ_OBJDIR=${MOZ_OBJDIR}
+
+
+# Build Firefox
+ac_add_options --enable-application=browser
+
+
+# parallel build
+mk_add_options MOZ_PARALLEL_BUILD=12
+
+
+mk_add_options AUTOCLOBBER=1
+
+
+MOZBUILD_STATE_PATH_TT="${MOZBUILD_STATE_PATH//\\//}"
+MOZBUILD_STATE_PATH_TT=${MOZBUILD_STATE_PATH_TT%/}
+
+if test -d "$MOZBUILD_STATE_PATH_TT/clang/bin"; then
+    CLANG_BIN_DIR=`cd "$MOZBUILD_STATE_PATH_TT/clang/bin" ; pwd`
+    export PATH="${CLANG_BIN_DIR}:${PATH}"
+fi
+# export CLANG_BIN_DIR="C:/LLVM18/bin"
+# export PATH="${CLANG_BIN_DIR}:${PATH}"
+CC=clang-cl
+CXX=clang-cl
+LINKER=lld-link
+
+
+#export ENABLE_CLANG_PLUGIN=1
+MOZ_REQUIRE_SIGNING=
+
+
+
+
+COMMON_CxxFLAGS="-O2 -clang:-O2 -msse3 -mcx16 -msahf -mprfchw -mllvm -disable-select-optimize=false -mllvm -hot-cold-split -mllvm -enable-cold-section -flto=thin -fuse-ld=lld -D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR"
+COMMON_LDFLAGS="-mllvm:-enable-ext-tsp-block-placement=1 -mllvm:-import-instr-limit=21 -mllvm:-import-hot-multiplier=15 -mllvm:-import-instr-evolution-factor=0.54 -mllvm:-disable-select-optimize=false -mllvm:-disable-auto-upgrade-debug-info -opt:lldltojobs=all -ignore:4037"
+
+if [ -n "$CLANG_BIN_DIR" ]; then
+    CLANG_MAJOR_VERSION=$("$CLANG_BIN_DIR/clang-cl" --version | head -n 1 | sed -E 's/.*clang version ([0-9]+)\..*/\1/')
+    if [ "$CLANG_MAJOR_VERSION" -lt 20 ]; then
+        # Don't include <rtmintrin.h> to avoid compile errors with the new Windows SDK.
+        # See also: https://github.com/llvm/llvm-project/issues/95133
+        COMMON_CxxFLAGS="$COMMON_CxxFLAGS -D__RTMINTRIN_H"
+    fi
+fi
+
+# CSIR PGO
+#export PROFILE_GEN_SCRIPT="$(where python3 | head -n 1) E:/Mozilla/tete009_patch/PgoMsg.py"
+export PROFILE_GEN_SCRIPT="$(where python3 | head -n 1) E:/Mozilla/tete009_patch/PgoAuto.py"
+ac_add_options MOZ_PGO=1
+export ENABLE_CSPGO=1
+ac_add_options --enable-lto=cross,thin
+export MOZ_LTO=cross,thin
+
+if [ -n "$MOZ_PROFILE_GENERATE" ]; then
+    ac_add_options --enable-profile-generate=cross
+    COMMON_CxxFLAGS="$COMMON_CxxFLAGS -fprofile-generate -mllvm -enable-name-compression=false -mllvm -pgo-temporal-instrumentation -fprofile-update=atomic"
+elif [ -n "$MOZ_CS_PROFILE_GENERATE" ] || [ -n "$MOZ_PROFILE_USE" ]; then
+    ac_add_options --enable-profile-use=cross
+    if [ -n "$MOZ_CS_PROFILE_GENERATE" ]; then
+        ac_add_options --enable-cs-profile-generate
+        MERGED_PROFDATA="$MOZ_OBJDIR/instrumented/merged.profdata"
+        COMMON_CxxFLAGS="$COMMON_CxxFLAGS -fcs-profile-generate -mllvm -enable-name-compression=false -fprofile-use=$MERGED_PROFDATA -fprofile-update=atomic"
+        COMMON_LDFLAGS="$COMMON_LDFLAGS -lto-cs-profile-file:$MERGED_PROFDATA -lto-cs-profile-generate -wholearchive:clang_rt.profile-x86_64.lib"
+    else
+        MERGED_PROFDATA="$MOZ_OBJDIR/instrumented_cs/merged.profdata"
+        COMMON_CxxFLAGS="$COMMON_CxxFLAGS -fprofile-use=$MERGED_PROFDATA"
+        COMMON_LDFLAGS="$COMMON_LDFLAGS -lto-cs-profile-file:$MERGED_PROFDATA"
+    fi
+    ac_add_options --with-pgo-profile-path=$MERGED_PROFDATA
+    ac_add_options --with-pgo-jarlog=$MOZ_OBJDIR/jarlog/en-US.log
+fi
+
+export CFLAGS="$CFLAGS $COMMON_CxxFLAGS"
+export CXXFLAGS="$CXXFLAGS $COMMON_CxxFLAGS"
+export LDFLAGS="$LDFLAGS $COMMON_LDFLAGS"
+
+
+
+
+# Rust
+export RUSTC_OPT_LEVEL=3
+export RUSTFLAGS="$RUSTFLAGS -Ctarget-feature=+sse3,+cx16,+sahf,+prfchw -Cllvm-args=-disable-select-optimize=false -Cllvm-args=-hot-cold-split -Cllvm-args=-enable-cold-section -Clink-args=--icf=safe"
+
+
+# Main options
+ac_add_options --target=x86_64-pc-windows-msvc
+ac_add_options --host=x86_64-pc-windows-msvc
+ac_add_options --enable-optimize="-O2 -clang:-O2 -msse3 -mcx16 -msahf -mprfchw -mllvm -disable-select-optimize=false -mllvm -hot-cold-split -mllvm -enable-cold-section -DTT_MEMUTIL"
+ac_add_options --enable-release
+ac_add_options --disable-debug
+ac_add_options --disable-tests
+ac_add_options --enable-jemalloc
+ac_add_options --disable-maintenance-service
+ac_add_options --enable-update-channel=release
+ac_add_options --enable-rust-simd
+# ac_add_options --enable-clang-plugin
+
+# ac_add_options --with-ccache="${MOZBUILD_STATE_PATH_TT}/sccache/sccache.exe"
+# mk_add_options "export RUSTC_WRAPPER=${MOZBUILD_STATE_PATH_TT}/sccache/sccache.exe"
+# 
+# export CCACHE="sccache"
+# export SCCACHE_VERBOSE_STATS=1
+# export SCCACHE_IGNORE_SERVER_IO_ERROR=1
+# mk_add_options "export SCCACHE_MAX_FRAME_LENGTH=50000000"
+# # mk_add_options MOZBUILD_MANAGE_SCCACHE_DAEMON=${MOZBUILD_STATE_PATH_TT}/sccache/sccache
+
+
+
+
+# Enable WASM libraries sandboxing forcibly for now until we figure out build failures.
+ac_add_options --with-wasi-sysroot="${MOZBUILD_STATE_PATH_TT}/sysroot-wasm32-wasi"
+#ac_add_options --with-wasi-sysroot="E:/Mozilla/wasi-sysroot-22"
+
+
+
+
+# directories
+# export LLVM_CONFIG="${MOZBUILD_STATE_PATH_TT}/clang/bin/llvm-config"
+CBINDGEN="${MOZBUILD_STATE_PATH_TT}/cbindgen/cbindgen"
+NASM="${MOZBUILD_STATE_PATH_TT}/nasm/nasm.exe"
+NODEJS="${MOZBUILD_STATE_PATH_TT}/node/node.exe"
+
+
+
+
+WINDOWSSDKDIR=$SDKDIR
+WIN32_REDIST_DIR="${SYSTEMROOT}/System32"
+
+UNIVERSALCRTSDKDIR_TT="${UNIVERSALCRTSDKDIR_TT//\\//}"
+UNIVERSALCRTSDKDIR_TT=${UNIVERSALCRTSDKDIR_TT%/}
+WIN_UCRT_REDIST_DIR="${UNIVERSALCRTSDKDIR_TT}/Redist/${UCRTVERSION_TT}/ucrt/DLLs/x64"
+
+
+
+
+# Disable telemetry
+ac_add_options MOZ_TELEMETRY_REPORTING=
+
+
+# Disable Installer
+# ac_add_options --disable-installer
+# Disable Updater
+ac_add_options --disable-updater
+# Disable crash reporter
+ac_add_options --disable-crashreporter
+
+

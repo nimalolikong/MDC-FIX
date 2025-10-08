@@ -1,0 +1,22 @@
+diff --git a/build/moz.configure/rust.configure b/build/moz.configure/rust.configure
+--- a/build/moz.configure/rust.configure
++++ b/build/moz.configure/rust.configure
+@@ -607,16 +607,18 @@ def debug_rust():
+ set_config("MOZ_DEBUG_RUST", debug_rust)
+ set_define("MOZ_DEBUG_RUST", debug_rust)
+ 
+ # ==============================================================
+ 
+ option(env="RUSTFLAGS", nargs=1, help="Rust compiler flags")
+ set_config("RUSTFLAGS", depends("RUSTFLAGS")(lambda flags: flags))
+ 
++option(env="CARGOFLAGS", nargs=1, help="Cargo flags")
++set_config("CARGOFLAGS", depends("CARGOFLAGS")(lambda flags: flags))
+ 
+ # Rust compiler flags
+ # ==============================================================
+ 
+ 
+ @depends(moz_optimize)
+ def rustc_opt_level_default(moz_optimize):
+     return "2" if moz_optimize else "0"

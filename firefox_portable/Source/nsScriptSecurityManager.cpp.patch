@@ -1,0 +1,26 @@
+diff --git a/caps/nsScriptSecurityManager.cpp b/caps/nsScriptSecurityManager.cpp
+--- a/caps/nsScriptSecurityManager.cpp
++++ b/caps/nsScriptSecurityManager.cpp
+@@ -1540,19 +1540,19 @@ nsScriptSecurityManager::CanGetService(J
+   SetPendingExceptionASCII(cx, errorMsg.get());
+   return NS_ERROR_DOM_XPCONNECT_ACCESS_DENIED;
+ }
+ 
+ const char sJSEnabledPrefName[] = "javascript.enabled";
+ const char sFileOriginPolicyPrefName[] =
+     "security.fileuri.strict_origin_policy";
+ 
+-static const char* kObservedPrefs[] = {sJSEnabledPrefName,
+-                                       sFileOriginPolicyPrefName,
+-                                       "capability.policy.", nullptr};
++constexpr const char* kObservedPrefs[] = {sJSEnabledPrefName,
++                                          sFileOriginPolicyPrefName,
++                                          "capability.policy.", nullptr};
+ 
+ /////////////////////////////////////////////
+ // Constructor, Destructor, Initialization //
+ /////////////////////////////////////////////
+ nsScriptSecurityManager::nsScriptSecurityManager(void)
+     : mPrefInitialized(false), mIsJavaScriptEnabled(false) {
+   static_assert(
+       sizeof(intptr_t) == sizeof(void*),

@@ -1,0 +1,45 @@
+diff --git a/mfbt/ToString.h b/mfbt/ToString.h
+--- a/mfbt/ToString.h
++++ b/mfbt/ToString.h
+@@ -7,24 +7,38 @@
+ /* Utilities for converting an object to a string representation. */
+ 
+ #ifndef mozilla_ToString_h
+ #define mozilla_ToString_h
+ 
+ #include <string>
+ #include <sstream>
+ 
++#include "mozilla/Types.h"
++
+ namespace mozilla {
+ 
++namespace detail {
++
++using OStringStreamWriter = void (*)(std::ostringstream&, const void*);
++MFBT_API MOZ_NEVER_INLINE
++std::string ToString_impl(const void* aValue, OStringStreamWriter aWriter);
++
++template <typename T>
++MOZ_NEVER_INLINE
++void ToStringWriter(std::ostringstream& aStream, const void* aVal) {
++  aStream << *static_cast<const T*>(aVal);
++}
++
++} // namespace detail
++
+ /**
+  * A convenience function for converting an object to a string representation.
+  * Supports any object which can be streamed to an std::ostream.
+  */
+ template <typename T>
+ std::string ToString(const T& aValue) {
+-  std::ostringstream stream;
+-  stream << aValue;
+-  return stream.str();
++  return detail::ToString_impl(&aValue, &detail::ToStringWriter<T>);
+ }
+ 
+ }  // namespace mozilla
+ 
+ #endif /* mozilla_ToString_h */

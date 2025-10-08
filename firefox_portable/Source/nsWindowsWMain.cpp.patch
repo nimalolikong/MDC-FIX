@@ -1,0 +1,30 @@
+diff --git a/toolkit/xre/nsWindowsWMain.cpp b/toolkit/xre/nsWindowsWMain.cpp
+--- a/toolkit/xre/nsWindowsWMain.cpp
++++ b/toolkit/xre/nsWindowsWMain.cpp
+@@ -8,16 +8,26 @@
+ // This file is a .cpp file meant to be included in nsBrowserApp.cpp and other
+ // similar bootstrap code. It converts wide-character windows wmain into UTF-8
+ // narrow-character strings.
+ 
+ #ifndef XP_WIN
+ #  error This file only makes sense on Windows.
+ #endif
+ 
++// Force link tmemutil.dll
++#if defined(TT_MEMUTIL)
++#include "tmemutil.h"
++#if defined(_M_IX86)
++#pragma comment(linker, "/include:_GetCpuFeature_tt")
++#elif defined(_M_AMD64)
++#pragma comment(linker, "/include:GetCpuFeature_tt")
++#endif
++#endif /* TT_MEMUTIL */
++
+ #include "mozilla/Char16.h"
+ #include "nsUTF8Utils.h"
+ 
+ #include <windows.h>
+ 
+ #ifdef __MINGW32__
+ 
+ /* MingW currently does not implement a wide version of the

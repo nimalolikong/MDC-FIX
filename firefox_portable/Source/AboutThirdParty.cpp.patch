@@ -1,0 +1,42 @@
+diff --git a/toolkit/components/aboutthirdparty/AboutThirdParty.cpp b/toolkit/components/aboutthirdparty/AboutThirdParty.cpp
+index 3b7d3bc08b..8f460920bc 100644
+--- a/toolkit/components/aboutthirdparty/AboutThirdParty.cpp
++++ b/toolkit/components/aboutthirdparty/AboutThirdParty.cpp
+@@ -373,17 +373,17 @@
+     mLocations.Sort([](const InstallLocationT& aA, const InstallLocationT& aB) {
+       return CompareIgnoreCase(aA.first(), aB.first());
+     });
+     aOutLocations.SwapElements(mLocations);
+   }
+ };
+ 
+ class KnownModule final {
+-  static KnownModule sKnownExtensions[static_cast<int>(KnownModuleType::Last)];
++  static const KnownModule sKnownExtensions[static_cast<int>(KnownModuleType::Last)];
+ 
+   static bool GetInprocServerDllPathFromGuid(const GUID& aGuid,
+                                              nsAString& aResult) {
+     nsAutoStringN<60> subkey;
+     subkey.AppendPrintf(
+         "CLSID\\{%08lx-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x}\\"
+         "InProcServer32",
+         aGuid.Data1, aGuid.Data2, aGuid.Data3, aGuid.Data4[0], aGuid.Data4[1],
+@@ -615,17 +615,17 @@
+ 
+   KnownModule() = delete;
+   KnownModule(KnownModule&&) = delete;
+   KnownModule& operator=(KnownModule&&) = delete;
+   KnownModule(const KnownModule&) = delete;
+   KnownModule& operator=(const KnownModule&) = delete;
+ };
+ 
+-MOZ_RUNINIT KnownModule KnownModule::sKnownExtensions[] = {
++MOZ_RUNINIT const KnownModule KnownModule::sKnownExtensions[] = {
+     {HandlerType::Multi, u"TIP"_ns},
+     {HandlerType::Multi, u"ShellIconOverlayIdentifiers"_ns},
+     {HandlerType::Multi, u"ContextMenuHandlers"_ns},
+     {HandlerType::Multi, u"CopyHookHandlers"_ns},
+     {HandlerType::Multi, u"DragDropHandlers"_ns},
+     {HandlerType::Multi, u"PropertySheetHandlers"_ns},
+     {HandlerType::Single, u"DataHandler"_ns},
+     {HandlerType::Single, u"DropHandler"_ns},

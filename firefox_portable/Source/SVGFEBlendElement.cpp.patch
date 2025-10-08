@@ -1,0 +1,22 @@
+diff --git a/dom/svg/SVGFEBlendElement.cpp b/dom/svg/SVGFEBlendElement.cpp
+--- a/dom/svg/SVGFEBlendElement.cpp
++++ b/dom/svg/SVGFEBlendElement.cpp
+@@ -15,17 +15,17 @@ using namespace mozilla::gfx;
+ 
+ namespace mozilla::dom {
+ 
+ JSObject* SVGFEBlendElement::WrapNode(JSContext* aCx,
+                                       JS::Handle<JSObject*> aGivenProto) {
+   return SVGFEBlendElement_Binding::Wrap(aCx, this, aGivenProto);
+ }
+ 
+-SVGEnumMapping SVGFEBlendElement::sModeMap[] = {
++const SVGEnumMapping SVGFEBlendElement::sModeMap[] = {
+     {nsGkAtoms::normal, SVG_FEBLEND_MODE_NORMAL},
+     {nsGkAtoms::multiply, SVG_FEBLEND_MODE_MULTIPLY},
+     {nsGkAtoms::screen, SVG_FEBLEND_MODE_SCREEN},
+     {nsGkAtoms::darken, SVG_FEBLEND_MODE_DARKEN},
+     {nsGkAtoms::lighten, SVG_FEBLEND_MODE_LIGHTEN},
+     {nsGkAtoms::overlay, SVG_FEBLEND_MODE_OVERLAY},
+     {nsGkAtoms::color_dodge, SVG_FEBLEND_MODE_COLOR_DODGE},
+     {nsGkAtoms::color_burn, SVG_FEBLEND_MODE_COLOR_BURN},

@@ -1,0 +1,24 @@
+diff --git a/widget/windows/WinIMEHandler.h b/widget/windows/WinIMEHandler.h
+--- a/widget/windows/WinIMEHandler.h
++++ b/widget/windows/WinIMEHandler.h
+@@ -213,18 +213,18 @@ class IMEHandler final {
+ 
+   static bool IsOnScreenKeyboardSupported();
+ 
+   static void MaybeShowOnScreenKeyboard(nsWindow* aWindow,
+                                         const InputContext& aInputContext);
+   enum class Sync { Yes, No };
+   static void MaybeDismissOnScreenKeyboard(nsWindow* aWindow,
+                                            Sync aSync = Sync::No);
+-  static bool WStringStartsWithCaseInsensitive(const std::wstring& aHaystack,
+-                                               const std::wstring& aNeedle);
++  static bool StartsWithCaseInsensitive(std::wstring_view aHaystack,
++                                        std::wstring_view aNeedle);
+   static bool NeedOnScreenKeyboard();
+   static bool IsKeyboardPresentOnSlate();
+   static bool IsInWin10TabletMode();
+   static bool AutoInvokeOnScreenKeyboardInDesktopMode();
+   static bool NeedsToAssociateIMC();
+   static bool NeedsSearchInputScope();
+ 
+   /**

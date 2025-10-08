@@ -1,0 +1,22 @@
+diff --git a/xpcom/base/ErrorList.py b/xpcom/base/ErrorList.py
+--- a/xpcom/base/ErrorList.py
++++ b/xpcom/base/ErrorList.py
+@@ -1383,17 +1383,17 @@ enum class nsresult : uint32_t
+     )
+ 
+     items = []
+     for error, val in errors.items():
+         items.append(f"  {error} = nsresult::{error}")
+ 
+     output.write(
+         """
+-const nsresult
++inline const nsresult
+ {}
+ ;
+ 
+ #endif // ErrorList_h__
+ """.format(
+             ",\n".join(items)
+         )
+     )

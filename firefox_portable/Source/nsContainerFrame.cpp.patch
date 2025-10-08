@@ -1,0 +1,98 @@
+diff --git a/layout/generic/nsContainerFrame.cpp b/layout/generic/nsContainerFrame.cpp
+--- a/layout/generic/nsContainerFrame.cpp
++++ b/layout/generic/nsContainerFrame.cpp
+@@ -1,16 +1,20 @@
+ /* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+ /* vim: set ts=8 sts=2 et sw=2 tw=80: */
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ /* base class #1 for rendering objects that have child lists */
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++#include <xmmintrin.h>
++#endif
++
+ #include "nsContainerFrame.h"
+ 
+ #include <algorithm>
+ 
+ #include "mozilla/AutoRestore.h"
+ #include "mozilla/ComputedStyle.h"
+ #include "mozilla/PresShell.h"
+ #include "mozilla/dom/Document.h"
+@@ -375,16 +379,19 @@ void nsContainerFrame::BuildDisplayList(
+ void nsContainerFrame::BuildDisplayListForNonBlockChildren(
+     nsDisplayListBuilder* aBuilder, const nsDisplayListSet& aLists,
+     DisplayChildFlags aFlags) {
+   nsIFrame* kid = mFrames.FirstChild();
+   // Put each child's background directly onto the content list
+   nsDisplayListSet set(aLists, aLists.Content());
+   // The children should be in content order
+   while (kid) {
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++    _mm_prefetch((char *)kid->GetNextSibling(), _MM_HINT_T0);
++#endif
+     BuildDisplayListForChild(aBuilder, kid, set, aFlags);
+     kid = kid->GetNextSibling();
+   }
+ }
+ 
+ class nsDisplaySelectionOverlay final : public nsPaintedDisplayItem {
+  public:
+   /**
+@@ -972,17 +979,25 @@ void nsContainerFrame::PositionChildView
+   }
+ 
+   // Recursively walk aFrame's child frames.
+   // Process the additional child lists, but skip the popup list as the view for
+   // popups is managed by the parent.
+   // Currently only nsMenuFrame has a popupList and during layout will adjust
+   // the view manually to position the popup.
+   for (const auto& [list, listID] : aFrame->ChildLists()) {
+-    for (nsIFrame* childFrame : list) {
++    for (auto it = list.begin(); it != list.end();) {
++      nsIFrame* childFrame = *it;
++      ++it;
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++      if (it != list.end()) {
++        _mm_prefetch((char *)*it, _MM_HINT_NTA);
++        _mm_prefetch((char *)*it + 64, _MM_HINT_NTA);
++      }
++#endif
+       // Position the frame's view (if it has one) otherwise recursively
+       // process its children
+       if (childFrame->HasView()) {
+         PositionFrameView(childFrame);
+       } else {
+         PositionChildViews(childFrame);
+       }
+     }
+@@ -1234,17 +1249,25 @@ void nsContainerFrame::ReflowOverflowCon
+     ConsiderChildOverflow(aOverflowRects, frame, /* aAsIfScrolled = */ false);
+   }
+ }
+ 
+ void nsContainerFrame::DisplayOverflowContainers(
+     nsDisplayListBuilder* aBuilder, const nsDisplayListSet& aLists) {
+   nsFrameList* overflowconts = GetOverflowContainers();
+   if (overflowconts) {
+-    for (nsIFrame* frame : *overflowconts) {
++  const auto& overFlowConts = *overflowconts;
++  for (auto it = overFlowConts.begin(); it != overFlowConts.end();) {
++    auto frame = *it;
++    ++it;
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++    if (it != overFlowConts.end()) {
++      _mm_prefetch((char *)*it, _MM_HINT_T0);
++    }
++#endif
+       BuildDisplayListForChild(aBuilder, frame, aLists);
+     }
+   }
+ }
+ 
+ bool nsContainerFrame::TryRemoveFrame(FrameListPropertyDescriptor aProp,
+                                       nsIFrame* aChildToRemove) {
+   nsFrameList* list = GetProperty(aProp);

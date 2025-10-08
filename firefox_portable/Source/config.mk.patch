@@ -1,0 +1,34 @@
+diff --git a/config/config.mk b/config/config.mk
+--- a/config/config.mk
++++ b/config/config.mk
+@@ -133,19 +133,29 @@ ifneq (1,$(NO_PROFILE_GUIDED_OPTIMIZE))
+ PGO_CFLAGS += -DNS_FREE_PERMANENT_DATA=1
+ PGO_CFLAGS += $(if $(filter $(notdir $<),$(notdir $(NO_PROFILE_GUIDED_OPTIMIZE))),,$(PROFILE_GEN_CFLAGS))
+ endif # NO_PROFILE_GUIDED_OPTIMIZE
+ PGO_LDFLAGS += $(PROFILE_GEN_LDFLAGS)
+ endif # MOZ_PROFILE_GENERATE
+ 
+ ifdef MOZ_PROFILE_USE
+ ifneq (1,$(NO_PROFILE_GUIDED_OPTIMIZE))
++ifdef MOZ_CS_PROFILE_GENERATE
++PGO_CFLAGS += -DNS_FREE_PERMANENT_DATA=1
++endif # MOZ_CS_PROFILE_GENERATE
+ PGO_CFLAGS += $(if $(filter $(notdir $<),$(notdir $(NO_PROFILE_GUIDED_OPTIMIZE))),,$(PROFILE_USE_CFLAGS))
++PGO_LDFLAGS += $(if $(filter $(notdir $<),$(notdir $(NO_PROFILE_GUIDED_OPTIMIZE))),,$(PROFILE_USE_LDFLAGS))
++else
++PGO_LDFLAGS += $(PROFILE_USE_LDFLAGS)
+ endif # NO_PROFILE_GUIDED_OPTIMIZE
+-PGO_LDFLAGS += $(PROFILE_USE_LDFLAGS)
++ifdef MOZ_CS_PROFILE_GENERATE
++PGO_LDFLAGS += -NODEFAULTLIB:libucrt.lib -DEFAULTLIB:ucrt.lib -FORCE:MULTIPLE
++else # MOZ_CS_PROFILE_GENERATE
++PGO_LDFLAGS:=$(filter-out -lto-cs-profile-generate -wholearchive:clang_rt.profile-%,$(PGO_LDFLAGS))
++endif # MOZ_CS_PROFILE_GENERATE
+ endif # MOZ_PROFILE_USE
+ 
+ # Overloaded by comm builds to refer to $(commtopsrcdir), so that
+ # `mail` resolves in en-US builds and in repacks.
+ LOCALE_TOPDIR ?= $(topsrcdir)
+ MAKE_JARS_FLAGS = \
+ 	-t $(LOCALE_TOPDIR) \
+ 	-f $(MOZ_JAR_MAKER_FILE_FORMAT) \

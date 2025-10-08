@@ -1,0 +1,87 @@
+diff --git a/layout/generic/nsFlexContainerFrame.cpp b/layout/generic/nsFlexContainerFrame.cpp
+--- a/layout/generic/nsFlexContainerFrame.cpp
++++ b/layout/generic/nsFlexContainerFrame.cpp
+@@ -1,16 +1,20 @@
+ /* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+ /* vim: set ts=8 sts=2 et sw=2 tw=80: */
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ /* rendering object for CSS "display: flex" */
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++#include <xmmintrin.h>
++#endif
++
+ #include "nsFlexContainerFrame.h"
+ 
+ #include <algorithm>
+ 
+ #include "gfxContext.h"
+ #include "mozilla/Baseline.h"
+ #include "mozilla/CSSOrderAwareFrameIterator.h"
+ #include "mozilla/ComputedStyle.h"
+@@ -2992,18 +2996,31 @@ void nsFlexContainerFrame::BuildDisplayL
+   nsDisplayListSet childLists(tempLists, tempLists.BlockBorderBackgrounds());
+ 
+   CSSOrderAwareFrameIterator iter(
+       this, FrameChildListID::Principal,
+       CSSOrderAwareFrameIterator::ChildFilter::IncludeAll,
+       OrderStateForIter(this), OrderingPropertyForIter(this));
+ 
+   const auto flags = DisplayFlagsForFlexOrGridItem();
+-  for (; !iter.AtEnd(); iter.Next()) {
++  for (; !iter.AtEnd();) {
+     nsIFrame* childFrame = *iter;
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++     const nsStyleDisplay* disp = childFrame->StyleDisplay();
++    _mm_prefetch((char *)disp, _MM_HINT_NTA);
++    _mm_prefetch((char *)disp + 64, _MM_HINT_NTA);
++    _mm_prefetch((char *)disp + 128, _MM_HINT_NTA);
++#endif
++    iter.Next();
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++    if (!iter.AtEnd()) {
++      _mm_prefetch((char *)*iter, _MM_HINT_T0);
++      _mm_prefetch((char *)*iter + 64, _MM_HINT_T0);
++    }
++#endif
+     BuildDisplayListForChild(aBuilder, childFrame, childLists, flags);
+   }
+ 
+   tempLists.MoveTo(aLists);
+ }
+ 
+ void FlexLine::FreezeItemsEarly(bool aIsUsingFlexGrow,
+                                 ComputedFlexLineInfo* aLineInfo) {
+@@ -4964,20 +4981,28 @@ void nsFlexContainerFrame::UnionInFlowCh
+   //
+   // Note for sticky-positioned margin boxes, we only union it with the ink
+   // overflow to avoid circular dependencies with the scroll container. (The
+   // scroll position and the scroll container's size impact the sticky position,
+   // so we don't want the sticky position to impact them.)
+   OverflowAreas relPosItemMarginBoxes;
+   const bool useMozBoxCollapseBehavior =
+       StyleVisibility()->UseLegacyCollapseBehavior();
+-  for (nsIFrame* f : mFrames) {
++  const auto& frames = mFrames;
++  for (auto it = frames.begin(); it != frames.end();) {
++    const auto& f = *it;
++    ++it;
+     if (useMozBoxCollapseBehavior && f->StyleVisibility()->IsCollapse()) {
+       continue;
+     }
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++    if (it != frames.end()) {
++      _mm_prefetch((char *)*it, _MM_HINT_NTA);
++    }
++#endif
+     ConsiderChildOverflow(aOverflowAreas, f, aAsIfScrolled);
+     if (!isScrolledContent) {
+       continue;
+     }
+     if (f->IsPlaceholderFrame()) {
+       continue;
+     }
+     anyScrolledContentItem = true;

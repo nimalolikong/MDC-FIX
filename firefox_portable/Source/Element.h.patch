@@ -1,0 +1,30 @@
+diff --git a/dom/base/Element.h b/dom/base/Element.h
+--- a/dom/base/Element.h
++++ b/dom/base/Element.h
+@@ -737,16 +737,26 @@ class Element : public FragmentOrElement
+   REFLECT_NULLABLE_DOMSTRING_ATTR(AriaSelected, aria_selected)
+   REFLECT_NULLABLE_DOMSTRING_ATTR(AriaSetSize, aria_setsize)
+   REFLECT_NULLABLE_DOMSTRING_ATTR(AriaSort, aria_sort)
+   REFLECT_NULLABLE_DOMSTRING_ATTR(AriaValueMax, aria_valuemax)
+   REFLECT_NULLABLE_DOMSTRING_ATTR(AriaValueMin, aria_valuemin)
+   REFLECT_NULLABLE_DOMSTRING_ATTR(AriaValueNow, aria_valuenow)
+   REFLECT_NULLABLE_DOMSTRING_ATTR(AriaValueText, aria_valuetext)
+ 
++  void PrefetchAttrs() {
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++    _mm_prefetch((char *)&mAttrs, _MM_HINT_NTA);
++#endif
++  }
++
++  void PrefetchAttrsImpl() {
++    mAttrs.PrefetchImpl();
++  }
++
+  protected:
+   already_AddRefed<ShadowRoot> AttachShadowInternal(ShadowRootMode,
+                                                     ErrorResult& aError);
+ 
+  public:
+   MOZ_CAN_RUN_SCRIPT
+   ScrollContainerFrame* GetScrollContainerFrame(
+       nsIFrame** aFrame = nullptr, FlushType aFlushType = FlushType::Layout);

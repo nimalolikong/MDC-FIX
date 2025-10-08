@@ -1,0 +1,50 @@
+diff --git a/layout/tables/nsTableFrame.cpp b/layout/tables/nsTableFrame.cpp
+--- a/layout/tables/nsTableFrame.cpp
++++ b/layout/tables/nsTableFrame.cpp
+@@ -1,14 +1,18 @@
+ /* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+ /* vim: set ts=2 sw=2 et tw=80: */
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++#include <xmmintrin.h>
++#endif
++
+ #include "nsTableFrame.h"
+ 
+ #include <algorithm>
+ 
+ #include "BasicTableLayoutStrategy.h"
+ #include "FixedTableLayoutStrategy.h"
+ #include "gfxContext.h"
+ #include "mozilla/ComputedStyle.h"
+@@ -1195,17 +1199,26 @@ void nsTableFrame::BuildDisplayList(nsDi
+   // BorderBackground list.
+   for (nsIFrame* colGroup :
+        FirstContinuation()->GetChildList(FrameChildListID::ColGroup)) {
+     for (nsIFrame* col : colGroup->PrincipalChildList()) {
+       tableBGs.AddColumn((nsTableColFrame*)col);
+     }
+   }
+ 
+-  for (nsIFrame* kid : PrincipalChildList()) {
++  const auto& childList = PrincipalChildList();
++  for (auto it = childList.begin(); it != childList.end();) {
++    auto kid = *it;
++    ++it;
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++    if (it != childList.end()) {
++      _mm_prefetch((char *)*it, _MM_HINT_T0);
++      _mm_prefetch((char *)(*it) + 64, _MM_HINT_T0);
++    }
++#endif
+     BuildDisplayListForChild(aBuilder, kid, lists);
+   }
+ 
+   tableBGs.MoveTo(aLists);
+   lists.MoveTo(aLists);
+ 
+   if (IsVisibleForPainting()) {
+     // In the collapsed border model, overlay all collapsed borders.

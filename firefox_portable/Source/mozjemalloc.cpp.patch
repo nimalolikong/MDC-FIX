@@ -1,0 +1,67 @@
+diff --git a/memory/build/mozjemalloc.cpp b/memory/build/mozjemalloc.cpp
+--- a/memory/build/mozjemalloc.cpp
++++ b/memory/build/mozjemalloc.cpp
+@@ -116,16 +116,20 @@
+ //   Large : Each allocation is backed by a dedicated run.  Metadata are stored
+ //           in the associated arena chunk header maps.
+ //
+ //   Huge : Each allocation is backed by a dedicated contiguous set of chunks.
+ //          Metadata are stored in a separate red-black tree.
+ //
+ // *****************************************************************************
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++#include <xmmintrin.h>
++#endif
++
+ #include "mozmemory_wrap.h"
+ #include "mozjemalloc.h"
+ #include "mozjemalloc_types.h"
+ #include "mozjemalloc_profiling.h"
+ 
+ #include <cstring>
+ #include <cerrno>
+ #include <chrono>
+@@ -1738,16 +1742,21 @@ arena_run_t* arena_t::AllocRun(size_t aS
+     if (!chunk) {
+       return nullptr;
+     }
+ 
+     InitChunk(chunk, aSize >> gPageSize2Pow);
+     run = (arena_run_t*)(uintptr_t(chunk) +
+                          (gChunkHeaderNumPages << gPageSize2Pow));
+   }
++
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++  _mm_prefetch((char *)run, _MM_HINT_NTA);
++#endif
++
+   // Update page map.
+   return SplitRun(run, aSize, aLarge, aZero) ? run : nullptr;
+ }
+ 
+ void arena_t::UpdateMaxDirty() {
+   MaybeMutexAutoLock lock(mLock);
+   int32_t modifier = gArenas.DefaultMaxDirtyPageModifier();
+   if (modifier) {
+@@ -2634,16 +2643,20 @@ void* arena_t::MallocLarge(size_t aSize,
+   {
+     MaybeMutexAutoLock lock(mLock);
+     num_dirty_before = mNumDirty;
+     ret = AllocRun(aSize, true, aZero);
+     num_dirty_after = mNumDirty;
+     if (!ret) {
+       return nullptr;
+     }
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++    _mm_prefetch((char *)ret, _MM_HINT_NTA);
++    _mm_prefetch((char *)ret + 64, _MM_HINT_NTA);
++#endif
+     mStats.allocated_large += aSize;
+     mStats.operations++;
+   }
+   if (num_dirty_after < num_dirty_before) {
+     NotifySignificantReuse();
+   }
+ 
+   if (!aZero) {

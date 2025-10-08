@@ -1,0 +1,117 @@
+diff --git a/python/mozbuild/mozbuild/build_commands.py b/python/mozbuild/mozbuild/build_commands.py
+--- a/python/mozbuild/mozbuild/build_commands.py
++++ b/python/mozbuild/mozbuild/build_commands.py
+@@ -166,58 +166,77 @@ def build(
+     # By setting the current process's priority, by default our child processes
+     # will also inherit this same priority.
+     if not _set_priority(priority, verbose):
+         print("--priority not supported on this platform.")
+ 
+     if doing_pgo:
+         if what:
+             raise Exception("Cannot specify targets (%s) in MOZ_PGO=1 builds" % what)
++
++        def profile_generate(instr, append_env, profiledir_name, orig_topobjdir):
++            instr._topobjdir = mozpath.join(orig_topobjdir, profiledir_name)
++            status = instr.build(
++                command_context.metrics,
++                what=what,
++                jobs=jobs,
++                job_size=job_size,
++                directory=directory,
++                verbose=verbose,
++                keep_going=keep_going,
++                mach_context=command_context._mach_context,
++                append_env=append_env,
++            )
++            if status != 0:
++                return status
++
++            # Packaging the instrumented build is required to get the jarlog
++            # data.
++            status = instr._run_make(
++                directory=".",
++                target="package",
++                silent=not verbose,
++                ensure_exit_code=False,
++                append_env=append_env,
++            )
++            if status != 0:
++                return status
++
++            pgo_env = os.environ.copy()
++            if instr.config_environment.substs.get("CC_TYPE") in ("clang", "clang-cl"):
++                pgo_env["LLVM_PROFDATA"] = instr.config_environment.substs.get(
++                    "LLVM_PROFDATA"
++                )
++            pgo_env["JARLOG_FILE"] = mozpath.join(orig_topobjdir, "jarlog/en-US.log")
++            pgo_env.update(append_env)
++            pgo_cmd = [
++                command_context.virtualenv_manager.python_path,
++                mozpath.join(command_context.topsrcdir, "build/pgo/profileserver.py"),
++            ]
++            profile_gen_script = instr.config_environment.substs.get("PROFILE_GEN_SCRIPT")
++            if profile_gen_script:
++                subprocess.check_call(profile_gen_script[0], shell=True, cwd=instr.topobjdir, env=pgo_env)
++            else:
++                subprocess.check_call(pgo_cmd, cwd=instr.topobjdir, env=pgo_env)
++
++            return 0
++
+         instr = command_context._spawn(BuildDriver)
+         orig_topobjdir = instr._topobjdir
+-        instr._topobjdir = mozpath.join(instr._topobjdir, "instrumented")
+-
+         append_env = {"MOZ_PROFILE_GENERATE": "1"}
+-        status = instr.build(
+-            command_context.metrics,
+-            what=what,
+-            jobs=jobs,
+-            job_size=job_size,
+-            directory=directory,
+-            verbose=verbose,
+-            keep_going=keep_going,
+-            mach_context=command_context._mach_context,
+-            append_env=append_env,
+-        )
++        status = profile_generate(instr, append_env, "instrumented", orig_topobjdir)
+         if status != 0:
+             return status
+ 
+-        # Packaging the instrumented build is required to get the jarlog
+-        # data.
+-        status = instr._run_make(
+-            directory=".",
+-            target="package",
+-            silent=not verbose,
+-            ensure_exit_code=False,
+-            append_env=append_env,
+-        )
+-        if status != 0:
+-            return status
+-
+-        pgo_env = os.environ.copy()
+-        if instr.config_environment.substs.get("CC_TYPE") in ("clang", "clang-cl"):
+-            pgo_env["LLVM_PROFDATA"] = instr.config_environment.substs.get(
+-                "LLVM_PROFDATA"
+-            )
+-        pgo_env["JARLOG_FILE"] = mozpath.join(orig_topobjdir, "jarlog/en-US.log")
+-        pgo_cmd = [
+-            command_context.virtualenv_manager.python_path,
+-            mozpath.join(command_context.topsrcdir, "build/pgo/profileserver.py"),
+-        ]
+-        subprocess.check_call(pgo_cmd, cwd=instr.topobjdir, env=pgo_env)
++        if instr.config_environment.substs.get("ENABLE_CSPGO"):
++            instr_cs = command_context._spawn(BuildDriver)
++            append_env = {"MOZ_CS_PROFILE_GENERATE": "1", "MOZ_PROFILE_USE": "1"}
++            status = profile_generate(instr_cs, append_env, "instrumented_cs", orig_topobjdir)
++            if status != 0:
++                return status
+ 
+         # Set the default build to MOZ_PROFILE_USE
+         append_env = {"MOZ_PROFILE_USE": "1"}
+ 
+     driver = command_context._spawn(BuildDriver)
+     return driver.build(
+         command_context.metrics,
+         what=what,

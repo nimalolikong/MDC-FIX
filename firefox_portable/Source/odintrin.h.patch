@@ -1,0 +1,22 @@
+diff --git a/third_party/aom/aom_dsp/odintrin.h b/third_party/aom/aom_dsp/odintrin.h
+--- a/third_party/aom/aom_dsp/odintrin.h
++++ b/third_party/aom/aom_dsp/odintrin.h
+@@ -24,17 +24,17 @@
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+ 
+ typedef int od_coeff;
+ 
+ #define OD_DIVU_DMAX (1024)
+ 
+-extern uint32_t OD_DIVU_SMALL_CONSTS[OD_DIVU_DMAX][2];
++extern const uint32_t OD_DIVU_SMALL_CONSTS[OD_DIVU_DMAX][2];
+ 
+ /*Translate unsigned division by small divisors into multiplications.*/
+ #define OD_DIVU_SMALL(_x, _d)                                     \
+   ((uint32_t)((OD_DIVU_SMALL_CONSTS[(_d)-1][0] * (uint64_t)(_x) + \
+                OD_DIVU_SMALL_CONSTS[(_d)-1][1]) >>                \
+               32) >>                                              \
+    (OD_ILOG_NZ(_d) - 1))
+ 

@@ -1,0 +1,25 @@
+diff --git a/mfbt/ToString.cpp b/mfbt/ToString.cpp
+new file mode 100644
+--- /dev/null
++++ b/mfbt/ToString.cpp
+@@ -0,0 +1,20 @@
++/* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
++/* vim: set ts=8 sts=2 et sw=2 tw=80: */
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#include "mozilla/ToString.h"
++
++namespace mozilla {
++namespace detail {
++
++MFBT_API MOZ_NEVER_INLINE
++std::string ToString_impl(const void* aValue, OStringStreamWriter aWriter) {
++  std::ostringstream stream;
++  aWriter(stream, aValue);
++  return stream.str();
++}
++
++} /* namespace detail */
++} /* namespace mozilla */

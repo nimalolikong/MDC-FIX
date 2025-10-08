@@ -1,0 +1,23 @@
+diff --git a/dom/canvas/WebGLTypes.h b/dom/canvas/WebGLTypes.h
+--- a/dom/canvas/WebGLTypes.h
++++ b/dom/canvas/WebGLTypes.h
+@@ -37,16 +37,19 @@
+ #include "mozilla/ipc/Shmem.h"
+ #include "mozilla/layers/LayersSurfaces.h"
+ #include "gfxTypes.h"
+ 
+ #include "nsTArray.h"
+ #include "nsString.h"
+ #include "mozilla/dom/WebGLRenderingContextBinding.h"
+ 
++#include "nsPrintfCString.h"
++#include "nsContentUtils.h"
++
+ // Manual reflection of WebIDL typedefs that are different from their
+ // OpenGL counterparts.
+ using WebGLsizeiptr = int64_t;
+ using WebGLintptr = int64_t;
+ using WebGLboolean = bool;
+ 
+ // -
+ 

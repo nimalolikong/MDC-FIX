@@ -1,0 +1,24 @@
+diff --git a/dom/security/trusted-types/TrustedTypesConstants.h b/dom/security/trusted-types/TrustedTypesConstants.h
+--- a/dom/security/trusted-types/TrustedTypesConstants.h
++++ b/dom/security/trusted-types/TrustedTypesConstants.h
+@@ -6,18 +6,18 @@
+ 
+ #ifndef DOM_SECURITY_TRUSTED_TYPES_TRUSTEDTYPESCONSTANTS_H_
+ #define DOM_SECURITY_TRUSTED_TYPES_TRUSTEDTYPESCONSTANTS_H_
+ 
+ #include "nsLiteralString.h"
+ 
+ namespace mozilla::dom {
+ // https://w3c.github.io/trusted-types/dist/spec/#integration-with-content-security-policy
+-static constexpr nsLiteralString kValidRequireTrustedTypesForDirectiveValue =
++inline constexpr nsLiteralString kValidRequireTrustedTypesForDirectiveValue =
+     u"'script'"_ns;
+ 
+ // https://github.com/w3c/trusted-types/issues/542
+-constexpr nsLiteralString kTrustedTypesOnlySinkGroup =
++inline constexpr nsLiteralString kTrustedTypesOnlySinkGroup =
+     kValidRequireTrustedTypesForDirectiveValue;
+ 
+ }  // namespace mozilla::dom
+ 
+ #endif  // DOM_SECURITY_TRUSTED_TYPES_TRUSTEDTYPESCONSTANTS_H_

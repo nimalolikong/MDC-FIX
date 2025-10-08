@@ -1,0 +1,190 @@
+diff --git a/toolkit/components/glean/api/src/private/event.rs b/toolkit/components/glean/api/src/private/event.rs
+--- a/toolkit/components/glean/api/src/private/event.rs
++++ b/toolkit/components/glean/api/src/private/event.rs
+@@ -76,16 +76,78 @@ pub enum EventMetric<K> {
+         /// changes, this should be changed to a MetricId to distinguish
+         /// between metrics and sub-metrics.
+         id: BaseMetricId,
+         inner: glean::private::EventMetric<K>,
+     },
+     Child(ChildMetricMeta),
+ }
+ 
++trait ParentEventActions: Sync {
++    fn record_with_time(&self, timestamp: u64, extra: HashMap<String, String>);
++    fn test_get_value(&self, ping_name: Option<&str>) -> Option<Vec<RecordedEvent>>;
++    fn test_get_num_recorded_errors(&self, error: glean::ErrorType) -> i32;
++}
++
++impl<K: 'static + ExtraKeys + Send + Sync + Clone> ParentEventActions for glean::private::EventMetric<K> {
++    fn record_with_time(&self, timestamp: u64, extra: HashMap<String, String>) {
++        glean::private::EventMetric::<K>::record_with_time(self, timestamp, extra)
++    }
++    fn test_get_value(&self, ping_name: Option<&str>) -> Option<Vec<RecordedEvent>> {
++        glean::private::EventMetric::<K>::test_get_value(self, ping_name)
++    }
++    fn test_get_num_recorded_errors(&self, error: glean::ErrorType) -> i32 {
++        glean::private::EventMetric::<K>::test_get_num_recorded_errors(self, error)
++    }
++}
++
++#[inline(never)]
++fn record_with_time_parent_impl(
++    id: BaseMetricId,
++    inner: &dyn ParentEventActions,
++    timestamp: u64,
++    extra: HashMap<String, String>,
++) {
++    #[cfg(feature = "with_gecko")]
++    gecko_profiler::lazy_add_marker!(
++        "Event::record",
++        TelemetryProfilerCategory,
++        EventMetricMarker {
++            id,
++            extra: extra.clone(),
++        }
++    );
++    inner.record_with_time(timestamp, extra);
++}
++
++#[inline(never)]
++fn record_with_time_child_impl(
++    meta: &ChildMetricMeta,
++    timestamp: u64,
++    extra: HashMap<String, String>,
++) {
++    #[cfg(feature = "with_gecko")]
++    gecko_profiler::lazy_add_marker!(
++        "Event::record",
++        TelemetryProfilerCategory,
++        EventMetricMarker {
++            id: meta.id,
++            extra: extra.clone(),
++        }
++    );
++    with_ipc_payload(move |payload| {
++        if let Some(v) = payload.events.get_mut(&meta.id) {
++            v.push((timestamp, extra));
++        } else {
++            let v = vec![(timestamp, extra)];
++            payload.events.insert(meta.id, v);
++        }
++    });
++}
++
+ impl<K: 'static + ExtraKeys + Send + Sync + Clone> EventMetric<K> {
+     /// Create a new event metric.
+     pub fn new(id: BaseMetricId, meta: CommonMetricData) -> Self {
+         if need_ipc() {
+             EventMetric::Child(ChildMetricMeta::from_common_metric_data(id, meta))
+         } else {
+             let inner = glean::private::EventMetric::new(meta);
+             EventMetric::Parent { id, inner }
+@@ -124,60 +186,49 @@ impl<K: 'static + ExtraKeys + Send + Syn
+         self.record_with_time(now, extra);
+     }
+ 
+     /// Record a new event with the given timestamp and the raw `extra key ID -> String` map.
+     ///
+     /// Should only be used when applying previously recorded events, e.g. from IPC.
+     pub(crate) fn record_with_time(&self, timestamp: u64, extra: HashMap<String, String>) {
+         match self {
+-            #[allow(unused)]
+             EventMetric::Parent { id, inner } => {
+-                #[cfg(feature = "with_gecko")]
+-                gecko_profiler::lazy_add_marker!(
+-                    "Event::record",
+-                    TelemetryProfilerCategory,
+-                    EventMetricMarker {
+-                        id: *id,
+-                        extra: extra.clone(),
+-                    }
+-                );
+-                inner.record_with_time(timestamp, extra);
++                record_with_time_parent_impl(*id, inner, timestamp, extra);
+             }
+             EventMetric::Child(meta) => {
+-                #[cfg(feature = "with_gecko")]
+-                gecko_profiler::lazy_add_marker!(
+-                    "Event::record",
+-                    TelemetryProfilerCategory,
+-                    EventMetricMarker {
+-                        id: meta.id,
+-                        extra: extra.clone(),
+-                    }
+-                );
+-                with_ipc_payload(move |payload| {
+-                    if let Some(v) = payload.events.get_mut(&meta.id) {
+-                        v.push((timestamp, extra));
+-                    } else {
+-                        let v = vec![(timestamp, extra)];
+-                        payload.events.insert(meta.id, v);
+-                    }
+-                });
++                record_with_time_child_impl(meta, timestamp, extra);
+             }
+         }
+     }
+ }
+ 
++#[inline(never)]
++fn test_get_value_impl<'a>(
++    getter: &dyn ParentEventActions,
++    ping_name: Option<&'a str>,
++) -> Option<Vec<RecordedEvent>> {
++    getter.test_get_value(ping_name)
++}
++
++#[inline(never)]
++fn test_get_num_recorded_errors_impl(
++    getter: &dyn ParentEventActions,
++    error: glean::ErrorType,
++) -> i32 {
++    getter.test_get_num_recorded_errors(error)
++}
++
+ #[inherent]
+ impl<K: 'static + ExtraKeys + Send + Sync + Clone> Event for EventMetric<K> {
+     type Extra = K;
+ 
+     pub fn record<M: Into<Option<K>>>(&self, extra: M) {
+         let now = glean::get_timestamp_ms();
+         match self {
+-            #[allow(unused)]
+             EventMetric::Parent { id, inner } => {
+                 let extra = extra.into();
+                 #[cfg(feature = "with_gecko")]
+                 gecko_profiler::lazy_add_marker!(
+                     "Event::record",
+                     TelemetryProfilerCategory,
+                     EventMetricMarker {
+                         id: *id,
+@@ -200,26 +251,26 @@ impl<K: 'static + ExtraKeys + Send + Syn
+         }
+     }
+ 
+     pub fn test_get_value<'a, S: Into<Option<&'a str>>>(
+         &self,
+         ping_name: S,
+     ) -> Option<Vec<RecordedEvent>> {
+         match self {
+-            EventMetric::Parent { inner, .. } => inner.test_get_value(ping_name),
++            EventMetric::Parent { inner, .. } => test_get_value_impl(inner, ping_name.into()),
+             EventMetric::Child(_) => {
+                 panic!("Cannot get test value for event metric in non-main process!",)
+             }
+         }
+     }
+ 
+     pub fn test_get_num_recorded_errors(&self, error: glean::ErrorType) -> i32 {
+         match self {
+-            EventMetric::Parent { inner, .. } => inner.test_get_num_recorded_errors(error),
++            EventMetric::Parent { inner, .. } => test_get_num_recorded_errors_impl(inner, error),
+             EventMetric::Child(meta) => panic!(
+                 "Cannot get the number of recorded errors for {:?} in non-main process!",
+                 meta.id
+             ),
+         }
+     }
+ }
+ 

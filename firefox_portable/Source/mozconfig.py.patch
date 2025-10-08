@@ -1,0 +1,24 @@
+diff --git a/python/mozbuild/mozbuild/mozconfig.py b/python/mozbuild/mozbuild/mozconfig.py
+--- a/python/mozbuild/mozbuild/mozconfig.py
++++ b/python/mozbuild/mozbuild/mozconfig.py
+@@ -260,16 +260,20 @@ class MozconfigLoader(object):
+                 if parsed["env_before"].get("MOZ_PROFILE_GENERATE") == "1":
+                     # If MOZ_OBJDIR is specified in the mozconfig, we need to
+                     # make sure that the '/instrumented' directory gets appended
+                     # for the first build to avoid an objdir mismatch when
+                     # running 'mach package' on Windows.
+                     result["topobjdir"] = mozpath.join(
+                         result["topobjdir"], "instrumented"
+                     )
++                elif parsed["env_before"].get("MOZ_CS_PROFILE_GENERATE") == "1":
++                    result["topobjdir"] = mozpath.join(
++                        result["topobjdir"], "instrumented_cs"
++                    )
+                 continue
+ 
+             result["make_extra"].append(o)
+ 
+         return result
+ 
+     def _parse_loader_output(self, output):
+         mk_options = []

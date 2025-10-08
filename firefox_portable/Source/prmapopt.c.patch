@@ -1,0 +1,60 @@
+diff --git a/nsprpub/pr/src/io/prmapopt.c b/nsprpub/pr/src/io/prmapopt.c
+--- a/nsprpub/pr/src/io/prmapopt.c
++++ b/nsprpub/pr/src/io/prmapopt.c
+@@ -91,24 +91,24 @@ PRStatus PR_CALLBACK _PR_SocketGetSocket
+         rv = _PR_MD_GETSOCKOPT(fd, level, name, (char*)&value, &length);
+         if (PR_SUCCESS == rv) {
+           data->value.reuse_addr = (0 == value) ? PR_FALSE : PR_TRUE;
+         }
+         break;
+       }
+       case PR_SockOpt_McastLoopback: {
+ #  ifdef WIN32 /* Winsock */
+-        BOOL bool;
++        BOOL flag;
+ #  else
+-        PRUint8 bool;
++        PRUint8 flag;
+ #  endif
+-        length = sizeof(bool);
+-        rv = _PR_MD_GETSOCKOPT(fd, level, name, (char*)&bool, &length);
++        length = sizeof(flag);
++        rv = _PR_MD_GETSOCKOPT(fd, level, name, (char*)&flag, &length);
+         if (PR_SUCCESS == rv) {
+-          data->value.mcast_loopback = (0 == bool) ? PR_FALSE : PR_TRUE;
++          data->value.mcast_loopback = (0 == flag) ? PR_FALSE : PR_TRUE;
+         }
+         break;
+       }
+       case PR_SockOpt_RecvBufferSize:
+       case PR_SockOpt_SendBufferSize:
+       case PR_SockOpt_MaxSegment: {
+         PRIntn value;
+         length = sizeof(value);
+@@ -239,22 +239,22 @@ PRStatus PR_CALLBACK _PR_SocketSetSocket
+         PRIntn value;
+ #  endif
+         value = (data->value.reuse_addr) ? 1 : 0;
+         rv = _PR_MD_SETSOCKOPT(fd, level, name, (char*)&value, sizeof(value));
+         break;
+       }
+       case PR_SockOpt_McastLoopback: {
+ #  ifdef WIN32 /* Winsock */
+-        BOOL bool;
++        BOOL flag;
+ #  else
+-        PRUint8 bool;
++        PRUint8 flag;
+ #  endif
+-        bool = data->value.mcast_loopback ? 1 : 0;
+-        rv = _PR_MD_SETSOCKOPT(fd, level, name, (char*)&bool, sizeof(bool));
++        flag = data->value.mcast_loopback ? 1 : 0;
++        rv = _PR_MD_SETSOCKOPT(fd, level, name, (char*)&flag, sizeof(flag));
+         break;
+       }
+       case PR_SockOpt_RecvBufferSize:
+       case PR_SockOpt_SendBufferSize:
+       case PR_SockOpt_MaxSegment: {
+         PRIntn value = data->value.recv_buffer_size;
+         rv = _PR_MD_SETSOCKOPT(fd, level, name, (char*)&value, sizeof(value));
+         break;

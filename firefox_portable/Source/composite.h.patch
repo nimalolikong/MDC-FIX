@@ -1,0 +1,60 @@
+diff --git a/gfx/wr/swgl/src/composite.h b/gfx/wr/swgl/src/composite.h
+--- a/gfx/wr/swgl/src/composite.h
++++ b/gfx/wr/swgl/src/composite.h
+@@ -1,12 +1,16 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++#include <xmmintrin.h>
++#endif
++
+ // Converts a pixel from a source format to a destination format. By default,
+ // just return the value unchanged as for a simple copy.
+ template <typename P, typename U>
+ static ALWAYS_INLINE P convert_pixel(U src) {
+   return src;
+ }
+ 
+ // R8 format maps to BGRA value 0,0,R,1. The byte order is endian independent,
+@@ -234,16 +238,19 @@ static NO_INLINE void scale_blit(Texture
+   // Clip the source bounds by the destination offset.
+   int fracX = srcWidth * dstBounds.x0;
+   int fracY = srcHeight * dstBounds.y0;
+   srcBounds.x0 = max(fracX / dstWidth, srcBounds.x0);
+   srcBounds.y0 = max(fracY / dstHeight, srcBounds.y0);
+   fracX %= dstWidth;
+   fracY %= dstHeight;
+   char* src = srctex.sample_ptr(srcReq, srcBounds, invertY);
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++  _mm_prefetch(src, _MM_HINT_T0);
++#endif
+   // Inverted Y must step downward along source rows
+   if (invertY) {
+     srcStride = -srcStride;
+   }
+   int span = dstBounds.width();
+   for (int rows = dstBounds.height(); rows > 0; rows--) {
+     switch (srctex.bpp()) {
+       case 1:
+@@ -307,16 +314,19 @@ static NO_INLINE void scale_blit(Texture
+         assert(false);
+         break;
+     }
+     dest += destStride;
+     // Step source according to height ratio.
+     for (fracY += srcHeight; fracY >= dstHeight; fracY -= dstHeight) {
+       src += srcStride;
+     }
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++    _mm_prefetch(src, _MM_HINT_T0);
++#endif
+   }
+ }
+ 
+ template <bool COMPOSITE>
+ static void linear_row_blit(uint32_t* dest, int span, const vec2_scalar& srcUV,
+                             float srcDU, sampler2D sampler) {
+   vec2 uv = init_interp(srcUV, vec2_scalar(srcDU, 0.0f));
+   for (; span >= 4; span -= 4) {

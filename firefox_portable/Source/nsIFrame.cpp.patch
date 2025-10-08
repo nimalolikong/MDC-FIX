@@ -1,0 +1,57 @@
+diff --git a/layout/generic/nsIFrame.cpp b/layout/generic/nsIFrame.cpp
+--- a/layout/generic/nsIFrame.cpp
++++ b/layout/generic/nsIFrame.cpp
+@@ -1,16 +1,20 @@
+ /* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+ /* vim: set ts=8 sts=2 et sw=2 tw=80: */
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ /* base class of all rendering objects */
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++#include <xmmintrin.h>
++#endif
++
+ #include "nsIFrame.h"
+ 
+ #include <stdarg.h>
+ 
+ #include <algorithm>
+ 
+ #include "LayoutLogging.h"
+ #include "RubyUtils.h"
+@@ -7528,25 +7532,31 @@ bool nsIFrame::IsHiddenByContentVisibili
+            Style()->IsAnonBox());
+ }
+ 
+ nsIFrame* nsIFrame::GetClosestContentVisibilityAncestor(
+     const EnumSet<IncludeContentVisibility>& aInclude) const {
+   auto* parent = GetInFlowParent();
+   bool isAnonymousBlock = Style()->IsAnonBox() && parent &&
+                           parent->HasAnyStateBits(NS_FRAME_OWNS_ANON_BOXES);
+-  for (nsIFrame* cur = parent; cur; cur = cur->GetInFlowParent()) {
++  for (nsIFrame* cur = parent; cur;) {
++    nsIFrame* curNext = cur->GetInFlowParent();
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++    _mm_prefetch((char*)curNext, _MM_HINT_NTA);
++#endif
+     if (!isAnonymousBlock && cur->HidesContent(aInclude)) {
+       return cur;
+     }
+ 
+     // Anonymous boxes are not hidden by the content-visibility of their first
+     // non-anonymous ancestor, but can be hidden by ancestors further up the
+     // tree.
+     isAnonymousBlock = false;
++
++    cur = curNext;
+   }
+ 
+   return nullptr;
+ }
+ 
+ static bool IsClosedDetailsSlot(const Element* aElement) {
+   const auto* slot = HTMLSlotElement::FromNodeOrNull(aElement);
+   if (!slot || slot->HasName()) {

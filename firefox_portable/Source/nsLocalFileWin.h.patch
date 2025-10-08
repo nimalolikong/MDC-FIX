@@ -1,0 +1,51 @@
+diff --git a/xpcom/io/nsLocalFileWin.h b/xpcom/io/nsLocalFileWin.h
+--- a/xpcom/io/nsLocalFileWin.h
++++ b/xpcom/io/nsLocalFileWin.h
+@@ -15,16 +15,17 @@
+ #include "nsILocalFileWin.h"
+ #include "nsIClassInfoImpl.h"
+ #include "prio.h"
+ 
+ #include "mozilla/Attributes.h"
+ 
+ #include <windows.h>
+ #include <shlobj.h>
++#include <comdef.h>
+ 
+ #include <sys/stat.h>
+ 
+ class nsLocalFile final : public nsILocalFileWin {
+  public:
+   NS_DEFINE_STATIC_CID_ACCESSOR(NS_LOCAL_FILE_CID)
+ 
+   nsLocalFile();
+@@ -84,22 +85,29 @@ class nsLocalFile final : public nsILoca
+   // this will be the resolved path of shortcuts, it will *NEVER*
+   // be returned to the user
+   nsString mResolvedPath;
+ 
+   // this string, if not empty, is the *short* pathname that represents
+   // mWorkingPath
+   nsString mShortWorkingPath;
+ 
++  IMonikerPtr mWorkingPathMonikerPtr;
++  unsigned long mPathMonikerProcessId;
++
++  void EnsurePathMoniker();
++
+   FileInfo mFileInfo;
+ 
+   void MakeDirty() {
+     mDirty = true;
+     mResolveDirty = true;
+     mShortWorkingPath.Truncate();
++    mWorkingPathMonikerPtr = nullptr;
++    mPathMonikerProcessId = 0;
+   }
+ 
+   nsresult LookupExtensionIn(const char* const* aExtensionsArray,
+                              size_t aArrayLength, bool* aResult);
+ 
+   nsresult ResolveAndStat();
+   nsresult Resolve();
+   nsresult ResolveSymlink();

@@ -1,0 +1,40 @@
+diff --git a/gfx/thebes/StandardFonts-win10.inc b/gfx/thebes/StandardFonts-win10.inc
+--- a/gfx/thebes/StandardFonts-win10.inc
++++ b/gfx/thebes/StandardFonts-win10.inc
+@@ -1,16 +1,16 @@
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+ // List of standard font families installed as part of Windows 10
+ // from https://docs.microsoft.com/en-us/typography/fonts/windows_10_font_list
+ // TODO: check whether we need to list legacy styled family names like "... Light".
+-static const char* kBaseFonts[] = {
++static constexpr const char* kBaseFonts[] = {
+   "Arial",
+   "Arial Black",
+   "Bahnschrift",
+   "Bahnschrift Light",
+   "Bahnschrift SemiBold",
+   "Bahnschrift SemiLight",
+   "Calibri",
+   "Calibri Light",
+@@ -96,17 +96,17 @@ static const char* kBaseFonts[] = {
+   "Yu Gothic Medium",
+   "Yu Gothic UI",
+   "Yu Gothic UI Light",
+   "Yu Gothic UI Semibold",
+   "Yu Gothic UI Semilight",
+ };
+ 
+ // Additional fonts provided by language-pack installation.
+-static const char* kLangPackFonts[] = {
++static constexpr const char* kLangPackFonts[] = {
+   "Aharoni",  // Hebrew Supplemental Fonts
+   "Aldhabi",  // Arabic Script Supplemental Fonts
+   "Andalus",  // Arabic Script Supplemental Fonts
+   "Angsana New",  // Thai Supplemental Fonts
+   "AngsanaUPC",  // Thai Supplemental Fonts
+   "Aparajita",  // Devanagari Supplemental Fonts
+   "Arabic Typesetting",  // Arabic Script Supplemental Fonts
+   "Batang",  // Korean Supplemental Fonts

@@ -1,0 +1,30 @@
+diff --git a/image/imgLoader.cpp b/image/imgLoader.cpp
+--- a/image/imgLoader.cpp
++++ b/image/imgLoader.cpp
+@@ -1757,20 +1757,22 @@ void imgLoader::CheckCacheLimits() {
+   // Remove entries from the cache until we're back at our desired max size.
+   while (mCacheQueue.GetSize() > sCacheMaxSize) {
+     // Remove the first entry in the queue.
+     RefPtr<imgCacheEntry> entry(mCacheQueue.Pop());
+ 
+     NS_ASSERTION(entry, "imgLoader::CheckCacheLimits -- NULL entry pointer");
+ 
+     if (MOZ_LOG_TEST(gImgLog, LogLevel::Debug)) {
+-      RefPtr<imgRequest> req = entry->GetRequest();
+-      if (req) {
+-        LOG_STATIC_FUNC_WITH_PARAM(gImgLog, "imgLoader::CheckCacheLimits",
+-                                   "entry", req->CacheKey().URI());
++      if (entry) {
++        RefPtr<imgRequest> req = entry->GetRequest();
++        if (req) {
++          LOG_STATIC_FUNC_WITH_PARAM(gImgLog, "imgLoader::CheckCacheLimits",
++                                     "entry", req->CacheKey().URI());
++        }
+       }
+     }
+ 
+     if (entry) {
+       // We just popped this entry from the queue, so pass AlreadyRemoved
+       // to avoid searching the queue again in RemoveFromCache.
+       RemoveFromCache(entry, QueueState::AlreadyRemoved);
+     }

@@ -1,0 +1,111 @@
+diff --git a/third_party/rust/cc/src/flags.rs b/third_party/rust/cc/src/flags.rs
+--- a/third_party/rust/cc/src/flags.rs
++++ b/third_party/rust/cc/src/flags.rs
+@@ -5,16 +5,17 @@ use std::ffi::OsString;
+ 
+ #[derive(Debug, PartialEq, Default)]
+ pub(crate) struct RustcCodegenFlags<'a> {
+     branch_protection: Option<&'a str>,
+     code_model: Option<&'a str>,
+     no_vectorize_loops: bool,
+     no_vectorize_slp: bool,
+     profile_generate: Option<&'a str>,
++    cs_profile_generate: Option<&'a str>,
+     profile_use: Option<&'a str>,
+     control_flow_guard: Option<&'a str>,
+     lto: Option<&'a str>,
+     relocation_model: Option<&'a str>,
+     embed_bitcode: Option<bool>,
+     force_frame_pointers: Option<bool>,
+     no_redzone: Option<bool>,
+     soft_float: Option<bool>,
+@@ -110,18 +111,21 @@ impl<'this> RustcCodegenFlags<'this> {
+                 self.code_model = Some(flag_ok_or(value, "-Ccode-model must have a value")?);
+             }
+             // https://doc.rust-lang.org/rustc/codegen-options/index.html#no-vectorize-loops
+             "-Cno-vectorize-loops" => self.no_vectorize_loops = true,
+             // https://doc.rust-lang.org/rustc/codegen-options/index.html#no-vectorize-slp
+             "-Cno-vectorize-slp" => self.no_vectorize_slp = true,
+             // https://doc.rust-lang.org/rustc/codegen-options/index.html#profile-generate
+             "-Cprofile-generate" => {
+-                self.profile_generate =
+-                    Some(flag_ok_or(value, "-Cprofile-generate must have a value")?);
++                self.profile_generate = Some(value.unwrap_or(""));
++            }
++            // Context-Sensitive profile generation
++            "-Ccs-profile-generate" => {
++                self.cs_profile_generate = Some(value.unwrap_or(""));
+             }
+             // https://doc.rust-lang.org/rustc/codegen-options/index.html#profile-use
+             "-Cprofile-use" => {
+                 self.profile_use = Some(flag_ok_or(value, "-Cprofile-use must have a value")?);
+             }
+             // https://doc.rust-lang.org/rustc/codegen-options/index.html#control-flow-guard
+             "-Ccontrol-flow-guard" => self.control_flow_guard = value.or(Some("true")),
+             // https://doc.rust-lang.org/rustc/codegen-options/index.html#lto
+@@ -255,17 +259,28 @@ impl<'this> RustcCodegenFlags<'this> {
+         // Compiler-exclusive flags
+         match family {
+             ToolFamily::Clang { .. } => {
+                 // GNU and Clang compilers both support the same PGO flags, but they use different libraries and
+                 // different formats for the profile files which are not compatible.
+                 // clang and rustc both internally use llvm, so we want to inherit the PGO flags only for clang.
+                 // https://clang.llvm.org/docs/ClangCommandLineReference.html#cmdoption-clang-fprofile-generate
+                 if let Some(value) = self.profile_generate {
+-                    push_if_supported(format!("-fprofile-generate={value}").into());
++                    if value.is_empty() {
++                        push_if_supported("-fprofile-generate".into());
++                    } else {
++                        push_if_supported(format!("-fprofile-generate={value}").into());
++                    }
++                }
++                if let Some(value) = self.cs_profile_generate {
++                    if value.is_empty() {
++                        push_if_supported("-fcs-profile-generate".into());
++                    } else {
++                        push_if_supported(format!("-fcs-profile-generate={value}").into());
++                    }
+                 }
+                 // https://clang.llvm.org/docs/ClangCommandLineReference.html#cmdoption-clang-fprofile-use
+                 if let Some(value) = self.profile_use {
+                     push_if_supported(format!("-fprofile-use={value}").into());
+                 }
+ 
+                 // https://clang.llvm.org/docs/ClangCommandLineReference.html#cmdoption-clang-fembed-bitcode
+                 if let Some(value) = self.embed_bitcode {
+@@ -381,16 +396,17 @@ mod tests {
+             "-Cembed-bitcode=no",
+             "-Cforce-frame-pointers=yes",
+             "-Clto=false",
+             "-Clink-dead-code=yes",
+             "-Cno-redzone=yes",
+             "-Cno-vectorize-loops",
+             "-Cno-vectorize-slp",
+             "-Cprofile-generate=fooprofile",
++            "-Ccs-profile-generate=fooprofile",
+             "-Cprofile-use=fooprofile",
+             "-Crelocation-model=pic",
+             "-Csoft-float=yes",
+             "-Zbranch-protection=bti,pac-ret,leaf",
+             // Set flags we don't recognise but rustc supports next
+             // rustc flags
+             "--cfg",
+             "a",
+@@ -487,16 +503,17 @@ mod tests {
+                 control_flow_guard: Some("yes"),
+                 embed_bitcode: Some(false),
+                 force_frame_pointers: Some(true),
+                 lto: Some("false"),
+                 no_redzone: Some(true),
+                 no_vectorize_loops: true,
+                 no_vectorize_slp: true,
+                 profile_generate: Some("fooprofile"),
++                cs_profile_generate: Some("fooprofile"),
+                 profile_use: Some("fooprofile"),
+                 relocation_model: Some("pic"),
+                 soft_float: Some(true),
+                 branch_protection: Some("bti,pac-ret,leaf"),
+             },
+         );
+     }
+ }

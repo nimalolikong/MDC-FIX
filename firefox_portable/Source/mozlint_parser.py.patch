@@ -1,0 +1,47 @@
+diff --git a/python/mozlint/mozlint/parser.py b/python/mozlint/mozlint/parser.py
+index b215440374..542c4c8e65 100644
+--- a/python/mozlint/mozlint/parser.py
++++ b/python/mozlint/mozlint/parser.py
+@@ -70,23 +70,35 @@
+                 abspath = path
+                 if not os.path.isabs(abspath):
+                     abspath = os.path.join(self.root, path)
+ 
+                 if not os.path.exists(abspath):
+                     invalid_paths.add("  " + path)
+ 
+             if invalid_paths:
+-                raise LinterParseError(
+-                    relpath,
+-                    "The {} directive contains the following "
+-                    "paths that don't exist:\n{}".format(
+-                        attr, "\n".join(sorted(invalid_paths))
+-                    ),
+-                )
++                is_jj_env = os.path.isdir(os.path.join(self.root, '.jj')) and \
++                            os.path.isfile(os.path.join(self.root, '.gitignore'))
++
++                if is_jj_env:
++                    paths_to_remove = set()
++                    for p in invalid_paths:
++                        if p.strip() == '.hgignore':
++                            paths_to_remove.add(p)
++
++                    invalid_paths -= paths_to_remove
++
++                if invalid_paths:
++                    raise LinterParseError(
++                        relpath,
++                        "The {} directive contains the following "
++                        "paths that don't exist:\n{}".format(
++                            attr, "\n".join(sorted(invalid_paths))
++                        ),
++                    )
+ 
+         if "setup" in linter:
+             if linter["setup"].count(":") != 1:
+                 raise LinterParseError(
+                     relpath,
+                     "The setup attribute '{!r}' must have the "
+                     "form 'module:object'".format(linter["setup"]),
+                 )

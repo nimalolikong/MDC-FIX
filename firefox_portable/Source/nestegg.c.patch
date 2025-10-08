@@ -1,0 +1,188 @@
+diff --git a/media/libnestegg/src/nestegg.c b/media/libnestegg/src/nestegg.c
+index ba67df6292..cb993aac21 100644
+--- a/media/libnestegg/src/nestegg.c
++++ b/media/libnestegg/src/nestegg.c
+@@ -460,114 +460,114 @@
+ #define E_SINGLE_MASTER(ID, TYPE, STRUCT, FIELD) \
+   { #ID, ID, TYPE, offsetof(STRUCT, FIELD), DESC_FLAG_NONE, ne_ ## FIELD ## _elements, 0, 0 }
+ #define E_SUSPEND(ID, TYPE) \
+   { #ID, ID, TYPE, 0, DESC_FLAG_SUSPEND, NULL, 0, 0 }
+ #define E_LAST \
+   { NULL, 0, 0, 0, DESC_FLAG_NONE, NULL, 0, 0 }
+ 
+ /* EBML Element Lists */
+-static struct ebml_element_desc ne_ebml_elements[] = {
++static const struct ebml_element_desc ne_ebml_elements[] = {
+   E_FIELD(ID_EBML_VERSION, TYPE_UINT, struct ebml, ebml_version),
+   E_FIELD(ID_EBML_READ_VERSION, TYPE_UINT, struct ebml, ebml_read_version),
+   E_FIELD(ID_EBML_MAX_ID_LENGTH, TYPE_UINT, struct ebml, ebml_max_id_length),
+   E_FIELD(ID_EBML_MAX_SIZE_LENGTH, TYPE_UINT, struct ebml, ebml_max_size_length),
+   E_FIELD(ID_DOCTYPE, TYPE_STRING, struct ebml, doctype),
+   E_FIELD(ID_DOCTYPE_VERSION, TYPE_UINT, struct ebml, doctype_version),
+   E_FIELD(ID_DOCTYPE_READ_VERSION, TYPE_UINT, struct ebml, doctype_read_version),
+   E_LAST
+ };
+ 
+ /* WebM Element Lists */
+-static struct ebml_element_desc ne_seek_elements[] = {
++static const struct ebml_element_desc ne_seek_elements[] = {
+   E_FIELD(ID_SEEK_ID, TYPE_BINARY, struct seek, id),
+   E_FIELD(ID_SEEK_POSITION, TYPE_UINT, struct seek, position),
+   E_LAST
+ };
+ 
+-static struct ebml_element_desc ne_seek_head_elements[] = {
++static const struct ebml_element_desc ne_seek_head_elements[] = {
+   E_MASTER(ID_SEEK, TYPE_MASTER, struct seek_head, seek),
+   E_LAST
+ };
+ 
+-static struct ebml_element_desc ne_info_elements[] = {
++static const struct ebml_element_desc ne_info_elements[] = {
+   E_FIELD(ID_TIMECODE_SCALE, TYPE_UINT, struct info, timecode_scale),
+   E_FIELD(ID_DURATION, TYPE_FLOAT, struct info, duration),
+   E_LAST
+ };
+ 
+-static struct ebml_element_desc ne_mastering_metadata_elements[] = {
++static const struct ebml_element_desc ne_mastering_metadata_elements[] = {
+   E_FIELD(ID_PRIMARY_R_CHROMATICITY_X, TYPE_FLOAT, struct mastering_metadata, primary_r_chromacity_x),
+   E_FIELD(ID_PRIMARY_R_CHROMATICITY_Y, TYPE_FLOAT, struct mastering_metadata, primary_r_chromacity_y),
+   E_FIELD(ID_PRIMARY_G_CHROMATICITY_X, TYPE_FLOAT, struct mastering_metadata, primary_g_chromacity_x),
+   E_FIELD(ID_PRIMARY_G_CHROMATICITY_Y, TYPE_FLOAT, struct mastering_metadata, primary_g_chromacity_y),
+   E_FIELD(ID_PRIMARY_B_CHROMATICITY_X, TYPE_FLOAT, struct mastering_metadata, primary_b_chromacity_x),
+   E_FIELD(ID_PRIMARY_B_CHROMATICITY_Y, TYPE_FLOAT, struct mastering_metadata, primary_b_chromacity_y),
+   E_FIELD(ID_WHITE_POINT_CHROMATICITY_X, TYPE_FLOAT, struct mastering_metadata, white_point_chromaticity_x),
+   E_FIELD(ID_WHITE_POINT_CHROMATICITY_Y, TYPE_FLOAT, struct mastering_metadata, white_point_chromaticity_y),
+   E_FIELD(ID_LUMINANCE_MAX, TYPE_FLOAT, struct mastering_metadata, luminance_max),
+   E_FIELD(ID_LUMINANCE_MIN, TYPE_FLOAT, struct mastering_metadata, luminance_min),
+   E_LAST
+ };
+ 
+-static struct ebml_element_desc ne_colour_elements[] = {
++static const struct ebml_element_desc ne_colour_elements[] = {
+   E_FIELD(ID_MATRIX_COEFFICIENTS, TYPE_UINT, struct colour, matrix_coefficients),
+   E_FIELD(ID_RANGE, TYPE_UINT, struct colour, range),
+   E_FIELD(ID_TRANSFER_CHARACTERISTICS, TYPE_UINT, struct colour, transfer_characteristics),
+   E_FIELD(ID_PRIMARIES, TYPE_UINT, struct colour, primaries),
+   E_SINGLE_MASTER(ID_MASTERING_METADATA, TYPE_MASTER, struct colour, mastering_metadata),
+   E_LAST
+ };
+ 
+-static struct ebml_element_desc ne_video_elements[] = {
++static const struct ebml_element_desc ne_video_elements[] = {
+   E_FIELD(ID_STEREO_MODE, TYPE_UINT, struct video, stereo_mode),
+   E_FIELD(ID_ALPHA_MODE, TYPE_UINT, struct video, alpha_mode),
+   E_FIELD(ID_PIXEL_WIDTH, TYPE_UINT, struct video, pixel_width),
+   E_FIELD(ID_PIXEL_HEIGHT, TYPE_UINT, struct video, pixel_height),
+   E_FIELD(ID_PIXEL_CROP_BOTTOM, TYPE_UINT, struct video, pixel_crop_bottom),
+   E_FIELD(ID_PIXEL_CROP_TOP, TYPE_UINT, struct video, pixel_crop_top),
+   E_FIELD(ID_PIXEL_CROP_LEFT, TYPE_UINT, struct video, pixel_crop_left),
+   E_FIELD(ID_PIXEL_CROP_RIGHT, TYPE_UINT, struct video, pixel_crop_right),
+   E_FIELD(ID_DISPLAY_WIDTH, TYPE_UINT, struct video, display_width),
+   E_FIELD(ID_DISPLAY_HEIGHT, TYPE_UINT, struct video, display_height),
+   E_SINGLE_MASTER(ID_COLOUR, TYPE_MASTER, struct video, colour),
+   E_LAST
+ };
+ 
+-static struct ebml_element_desc ne_audio_elements[] = {
++static const struct ebml_element_desc ne_audio_elements[] = {
+   E_FIELD(ID_SAMPLING_FREQUENCY, TYPE_FLOAT, struct audio, sampling_frequency),
+   E_FIELD(ID_CHANNELS, TYPE_UINT, struct audio, channels),
+   E_FIELD(ID_BIT_DEPTH, TYPE_UINT, struct audio, bit_depth),
+   E_LAST
+ };
+ 
+-static struct ebml_element_desc ne_content_enc_aes_settings_elements[] = {
++static const struct ebml_element_desc ne_content_enc_aes_settings_elements[] = {
+   E_FIELD(ID_AES_SETTINGS_CIPHER_MODE, TYPE_UINT, struct content_enc_aes_settings, aes_settings_cipher_mode),
+   E_LAST
+ };
+ 
+-static struct ebml_element_desc ne_content_encryption_elements[] = {
++static const struct ebml_element_desc ne_content_encryption_elements[] = {
+   E_FIELD(ID_CONTENT_ENC_ALGO, TYPE_UINT, struct content_encryption, content_enc_algo),
+   E_FIELD(ID_CONTENT_ENC_KEY_ID, TYPE_BINARY, struct content_encryption, content_enc_key_id),
+   E_MASTER(ID_CONTENT_ENC_AES_SETTINGS, TYPE_MASTER, struct content_encryption, content_enc_aes_settings),
+   E_LAST
+ };
+ 
+-static struct ebml_element_desc ne_content_encoding_elements[] = {
++static const struct ebml_element_desc ne_content_encoding_elements[] = {
+   E_FIELD(ID_CONTENT_ENCODING_TYPE, TYPE_UINT, struct content_encoding, content_encoding_type),
+   E_MASTER(ID_CONTENT_ENCRYPTION, TYPE_MASTER, struct content_encoding, content_encryption),
+   E_LAST
+ };
+ 
+-static struct ebml_element_desc ne_content_encodings_elements[] = {
++static const struct ebml_element_desc ne_content_encodings_elements[] = {
+   E_MASTER(ID_CONTENT_ENCODING, TYPE_MASTER, struct content_encodings, content_encoding),
+   E_LAST
+ };
+ 
+-static struct ebml_element_desc ne_track_entry_elements[] = {
++static const struct ebml_element_desc ne_track_entry_elements[] = {
+   E_FIELD(ID_TRACK_NUMBER, TYPE_UINT, struct track_entry, number),
+   E_FIELD(ID_TRACK_UID, TYPE_UINT, struct track_entry, uid),
+   E_FIELD(ID_TRACK_TYPE, TYPE_UINT, struct track_entry, type),
+   E_FIELD(ID_FLAG_ENABLED, TYPE_UINT, struct track_entry, flag_enabled),
+   E_FIELD(ID_FLAG_DEFAULT, TYPE_UINT, struct track_entry, flag_default),
+   E_FIELD(ID_FLAG_LACING, TYPE_UINT, struct track_entry, flag_lacing),
+   E_FIELD(ID_TRACK_TIMECODE_SCALE, TYPE_FLOAT, struct track_entry, track_timecode_scale),
+   E_FIELD(ID_LANGUAGE, TYPE_STRING, struct track_entry, language),
+@@ -577,49 +577,49 @@
+   E_FIELD(ID_SEEK_PREROLL, TYPE_UINT, struct track_entry, seek_preroll),
+   E_FIELD(ID_DEFAULT_DURATION, TYPE_UINT, struct track_entry, default_duration),
+   E_SINGLE_MASTER(ID_VIDEO, TYPE_MASTER, struct track_entry, video),
+   E_SINGLE_MASTER(ID_AUDIO, TYPE_MASTER, struct track_entry, audio),
+   E_SINGLE_MASTER(ID_CONTENT_ENCODINGS, TYPE_MASTER, struct track_entry, content_encodings),
+   E_LAST
+ };
+ 
+-static struct ebml_element_desc ne_tracks_elements[] = {
++static const struct ebml_element_desc ne_tracks_elements[] = {
+   E_MASTER(ID_TRACK_ENTRY, TYPE_MASTER, struct tracks, track_entry),
+   E_LAST
+ };
+ 
+-static struct ebml_element_desc ne_cue_track_positions_elements[] = {
++static const struct ebml_element_desc ne_cue_track_positions_elements[] = {
+   E_FIELD(ID_CUE_TRACK, TYPE_UINT, struct cue_track_positions, track),
+   E_FIELD(ID_CUE_CLUSTER_POSITION, TYPE_UINT, struct cue_track_positions, cluster_position),
+   E_FIELD(ID_CUE_BLOCK_NUMBER, TYPE_UINT, struct cue_track_positions, block_number),
+   E_LAST
+ };
+ 
+-static struct ebml_element_desc ne_cue_point_elements[] = {
++static const struct ebml_element_desc ne_cue_point_elements[] = {
+   E_FIELD(ID_CUE_TIME, TYPE_UINT, struct cue_point, time),
+   E_MASTER(ID_CUE_TRACK_POSITIONS, TYPE_MASTER, struct cue_point, cue_track_positions),
+   E_LAST
+ };
+ 
+-static struct ebml_element_desc ne_cues_elements[] = {
++static const struct ebml_element_desc ne_cues_elements[] = {
+   E_MASTER(ID_CUE_POINT, TYPE_MASTER, struct cues, cue_point),
+   E_LAST
+ };
+ 
+-static struct ebml_element_desc ne_segment_elements[] = {
++static const struct ebml_element_desc ne_segment_elements[] = {
+   E_MASTER(ID_SEEK_HEAD, TYPE_MASTER, struct segment, seek_head),
+   E_SINGLE_MASTER(ID_INFO, TYPE_MASTER, struct segment, info),
+   E_SUSPEND(ID_CLUSTER, TYPE_MASTER),
+   E_SINGLE_MASTER(ID_TRACKS, TYPE_MASTER, struct segment, tracks),
+   E_SINGLE_MASTER(ID_CUES, TYPE_MASTER, struct segment, cues),
+   E_LAST
+ };
+ 
+-static struct ebml_element_desc ne_top_level_elements[] = {
++static const struct ebml_element_desc ne_top_level_elements[] = {
+   E_SINGLE_MASTER(ID_EBML, TYPE_MASTER, nestegg, ebml),
+   E_SINGLE_MASTER_O(ID_SEGMENT, TYPE_MASTER, nestegg, segment),
+   E_LAST
+ };
+ 
+ #undef E_FIELD
+ #undef E_MASTER
+ #undef E_SINGLE_MASTER_O

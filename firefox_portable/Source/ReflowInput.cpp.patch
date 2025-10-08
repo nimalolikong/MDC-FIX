@@ -1,0 +1,39 @@
+diff --git a/layout/generic/ReflowInput.cpp b/layout/generic/ReflowInput.cpp
+--- a/layout/generic/ReflowInput.cpp
++++ b/layout/generic/ReflowInput.cpp
+@@ -28,16 +28,17 @@
+ #include "nsIFrameInlines.h"
+ #include "nsIPercentBSizeObserver.h"
+ #include "nsImageFrame.h"
+ #include "nsLayoutUtils.h"
+ #include "nsLineBox.h"
+ #include "nsPresContext.h"
+ #include "nsStyleConsts.h"
+ #include "nsTableFrame.h"
++#include "mozilla/Attributes.h"
+ 
+ using namespace mozilla;
+ using namespace mozilla::css;
+ using namespace mozilla::dom;
+ using namespace mozilla::layout;
+ 
+ static bool CheckNextInFlowParenthood(nsIFrame* aFrame, nsIFrame* aParent) {
+   nsIFrame* frameNext = aFrame->GetNextInFlow();
+@@ -1279,16 +1280,17 @@ void ReflowInput::CalculateBorderPadding
+   *aInsideBoxSizing = inside;
+   *aOutsideBoxSizing = outside;
+ }
+ 
+ /**
+  * Returns true iff a pre-order traversal of the normal child
+  * frames rooted at aFrame finds no non-empty frame before aDescendant.
+  */
++MOZ_ALWAYS_INLINE
+ static bool AreAllEarlierInFlowFramesEmpty(nsIFrame* aFrame,
+                                            nsIFrame* aDescendant,
+                                            bool* aFound) {
+   if (aFrame == aDescendant) {
+     *aFound = true;
+     return true;
+   }
+   if (aFrame->IsPlaceholderFrame()) {

@@ -1,0 +1,50 @@
+diff --git a/layout/base/nsLayoutUtils.cpp b/layout/base/nsLayoutUtils.cpp
+--- a/layout/base/nsLayoutUtils.cpp
++++ b/layout/base/nsLayoutUtils.cpp
+@@ -1,14 +1,18 @@
+ /* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+ /* vim: set ts=8 sts=2 et sw=2 tw=80: */
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++#include <xmmintrin.h>
++#endif
++
+ #include "nsLayoutUtils.h"
+ 
+ #include <algorithm>
+ #include <limits>
+ 
+ #include "ActiveLayerTracker.h"
+ #include "DisplayItemClip.h"
+ #include "gfx2DGlue.h"
+@@ -575,17 +579,26 @@ void nsLayoutUtils::UnionChildOverflow(n
+   // Iterate over all children except pop-ups.
+   FrameChildListIDs skip(aSkipChildLists);
+   skip += FrameChildListID::Popup;
+ 
+   for (const auto& [list, listID] : aFrame->ChildLists()) {
+     if (skip.contains(listID)) {
+       continue;
+     }
+-    for (nsIFrame* child : list) {
++    for (auto it = list.begin(); it != list.end();) {
++      nsIFrame* child = *it;
++      ++it;
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++      if (it != list.end()) {
++        auto disp = (*it)->StyleDisplay();
++        _mm_prefetch((char *)disp, _MM_HINT_NTA);
++        _mm_prefetch((char *)disp + 64, _MM_HINT_NTA);
++      }
++#endif
+       aOverflowAreas.UnionWith(
+           child->GetActualAndNormalOverflowAreasRelativeToParent());
+     }
+   }
+ }
+ 
+ static void DestroyViewID(void* aObject, nsAtom* aPropertyName,
+                           void* aPropertyValue, void* aData) {

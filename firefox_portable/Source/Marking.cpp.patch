@@ -1,0 +1,187 @@
+diff --git a/js/src/gc/Marking.cpp b/js/src/gc/Marking.cpp
+--- a/js/src/gc/Marking.cpp
++++ b/js/src/gc/Marking.cpp
+@@ -1,14 +1,18 @@
+ /* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 -*-
+  * vim: set ts=8 sts=2 et sw=2 tw=80:
+  * This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++#include <xmmintrin.h>
++#endif
++
+ #include "gc/Marking-inl.h"
+ 
+ #include "mozilla/DebugOnly.h"
+ #include "mozilla/IntegerRange.h"
+ #include "mozilla/MathAlgorithms.h"
+ #include "mozilla/Maybe.h"
+ #include "mozilla/PodOperations.h"
+ #include "mozilla/ScopeExit.h"
+@@ -1334,31 +1338,38 @@ bool GCMarker::doMarking(SliceBudget& bu
+   MOZ_ASSERT(!gc.hasDelayedMarking());
+   MOZ_ASSERT(isDrained());
+ 
+   return true;
+ }
+ 
+ template <uint32_t opts, MarkColor color>
+ bool GCMarker::markOneColor(SliceBudget& budget) {
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++  _mm_prefetch((char *)&markColor_, _MM_HINT_T0);
++#endif
+   AutoSetMarkColor setColor(*this, color);
+   AutoUpdateMarkStackRanges updateRanges(*this);
+ 
+   while (processMarkStackTop<opts>(budget)) {
+     if (stack.isEmpty()) {
+       return true;
+     }
+   }
+ 
+   return false;
+ }
+ 
+ bool GCMarker::markCurrentColorInParallel(SliceBudget& budget) {
+   MOZ_ASSERT(stack.elementsRangesAreValid);
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++  _mm_prefetch((char *)&markColor_, _MM_HINT_T0);
++#endif
++
+   ParallelMarker::AtomicCount& waitingTaskCount =
+       parallelMarker_->waitingTaskCountRef();
+ 
+   while (processMarkStackTop<MarkingOptions::ParallelMarking>(budget)) {
+     if (stack.isEmpty()) {
+       return true;
+     }
+ 
+@@ -1485,16 +1496,20 @@ inline bool GCMarker::processMarkStackTo
+   MOZ_ASSERT_IF(markColor() == MarkColor::Gray, !hasBlackEntries());
+ 
+   JSObject* obj;             // The object being scanned.
+   SlotsOrElementsKind kind;  // The kind of slot range being scanned, if any.
+   HeapSlot* base;            // Slot range base pointer.
+   size_t index;              // Index of the next slot to mark.
+   size_t end;                // End of slot range to mark.
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++  constexpr size_t prefetch_distance = 6;
++#endif
++
+   if (stack.peekTag() == MarkStack::SlotsOrElementsRangeTag) {
+     auto range = stack.popSlotsOrElementsRange();
+     obj = range.ptr().asRangeObject();
+     NativeObject* nobj = &obj->as<NativeObject>();
+     kind = range.kind();
+     index = range.start();
+ 
+     switch (kind) {
+@@ -1565,17 +1580,17 @@ inline bool GCMarker::processMarkStackTo
+           markImplicitEdges(script);
+         }
+         AutoSetTracingSource asts(tracer(), script);
+         script->traceChildren(tracer());
+         return true;
+       }
+ 
+       default:
+-        MOZ_CRASH("Invalid tag in mark stack");
++        MOZ_MAKE_COMPILER_ASSUME_IS_UNREACHABLE("Invalid tag in mark stack");
+     }
+   }
+ 
+   return true;
+ 
+ scan_value_range:
+   while (index < end) {
+     MOZ_ASSERT(stack.capacity() >= stack.position() + ValueRangeWords);
+@@ -1588,16 +1603,21 @@ scan_value_range:
+ 
+     const Value& v = base[index];
+     index++;
+ 
+     if (!v.isGCThing()) {
+       continue;
+     }
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++    size_t future = std::min(index + prefetch_distance, end - 1);
++    _mm_prefetch((char*)&base[future], _MM_HINT_NTA);
++#endif
++
+     if (v.isString()) {
+       markAndTraverseEdge<opts>(obj, v.toString());
+     } else if (v.isObject()) {
+       JSObject* obj2 = &v.toObject();
+ #ifdef DEBUG
+       if (!obj2) {
+         fprintf(stderr,
+                 "processMarkStackTop found ObjectValue(nullptr) "
+@@ -1669,16 +1689,20 @@ scan_obj: {
+   if (!nobj->hasEmptyElements()) {
+     base = nobj->getDenseElements();
+     kind = SlotsOrElementsKind::Elements;
+     index = 0;
+     end = nobj->getDenseInitializedLength();
+ 
+     if (!nslots) {
+       // No slots at all. Scan elements immediately.
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++      size_t future = std::min(index + prefetch_distance, end - 1);
++      _mm_prefetch((char*)&base[future], _MM_HINT_NTA);
++#endif
+       goto scan_value_range;
+     }
+ 
+     pushValueRange(nobj, kind, index, end);
+   }
+ 
+   unsigned nfixed = nobj->numFixedSlots();
+   base = nobj->fixedSlots();
+@@ -1688,16 +1712,21 @@ scan_obj: {
+   if (nslots > nfixed) {
+     // Push dynamic slots for later scan.
+     pushValueRange(nobj, SlotsOrElementsKind::DynamicSlots, 0, nslots - nfixed);
+     end = nfixed;
+   } else {
+     end = nslots;
+   }
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++  size_t future = std::min(index + prefetch_distance, end - 1);
++  _mm_prefetch((char*)&base[future], _MM_HINT_NTA);
++#endif
++
+   // Scan any fixed slots.
+   goto scan_value_range;
+ }
+ }
+ 
+ /*** Mark Stack *************************************************************/
+ 
+ static_assert(sizeof(MarkStack::TaggedPtr) == sizeof(uintptr_t),
+@@ -2511,16 +2540,20 @@ void GCRuntime::markDelayedChildren(Aren
+  */
+ void GCRuntime::processDelayedMarkingList(MarkColor color) {
+   // Marking delayed children may add more arenas to the list, including arenas
+   // we are currently processing or have previously processed. Handle this by
+   // clearing a flag on each arena before marking its children. This flag will
+   // be set again if the arena is re-added. Iterate the list until no new arenas
+   // were added.
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++  _mm_prefetch((char *)&marker().markColor_, _MM_HINT_T0);
++#endif
++
+   AutoSetMarkColor setColor(marker(), color);
+   AutoUpdateMarkStackRanges updateRanges(marker());
+ 
+   do {
+     delayedMarkingWorkAdded = false;
+     for (Arena* arena = delayedMarkingList; arena;
+          arena = arena->getNextDelayedMarking()) {
+       if (arena->hasDelayedMarking(color)) {

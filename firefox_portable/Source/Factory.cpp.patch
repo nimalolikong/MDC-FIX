@@ -1,0 +1,59 @@
+diff --git a/gfx/2d/Factory.cpp b/gfx/2d/Factory.cpp
+--- a/gfx/2d/Factory.cpp
++++ b/gfx/2d/Factory.cpp
+@@ -264,16 +264,17 @@ void Factory::ShutDown() {
+     sConfig = nullptr;
+   }
+ 
+ #ifdef MOZ_ENABLE_FREETYPE
+   mFTLibrary = nullptr;
+ #endif
+ }
+ 
++#if !defined(MOZILLA_MAY_SUPPORT_SSE2)
+ bool Factory::HasSSE2() {
+ #if defined(__SSE2__) || defined(_M_X64) || \
+     (defined(_M_IX86_FP) && _M_IX86_FP >= 2)
+   // gcc with -msse2 (default on OSX and x86-64)
+   // cl.exe with -arch:SSE2 (default on x64 compiler)
+   return true;
+ #elif defined(HAVE_CPU_DETECTION)
+   static enum {
+@@ -285,17 +286,19 @@ bool Factory::HasSSE2() {
+   if (sDetectionState == UNINITIALIZED) {
+     sDetectionState = HasCPUIDBit(1u, edx, (1u << 26)) ? HAS_SSE2 : NO_SSE2;
+   }
+   return sDetectionState == HAS_SSE2;
+ #else
+   return false;
+ #endif
+ }
++#endif
+ 
++#if !defined(MOZILLA_MAY_SUPPORT_SSE4_1)
+ bool Factory::HasSSE4() {
+ #if defined(__SSE4__)
+   // gcc with -msse2 (default on OSX and x86-64)
+   // cl.exe with -arch:SSE2 (default on x64 compiler)
+   return true;
+ #elif defined(HAVE_CPU_DETECTION)
+   static enum {
+     UNINITIALIZED,
+@@ -306,16 +309,17 @@ bool Factory::HasSSE4() {
+   if (sDetectionState == UNINITIALIZED) {
+     sDetectionState = HasCPUIDBit(1u, ecx, (1u << 19)) ? HAS_SSE4 : NO_SSE4;
+   }
+   return sDetectionState == HAS_SSE4;
+ #else
+   return false;
+ #endif
+ }
++#endif
+ 
+ // If the size is "reasonable", we want gfxCriticalError to assert, so
+ // this is the option set up for it.
+ inline int LoggerOptionsBasedOnSize(const IntSize& aSize) {
+   return CriticalLog::DefaultOptions(Factory::ReasonableSurfaceSize(aSize));
+ }
+ 
+ bool Factory::ReasonableSurfaceSize(const IntSize& aSize) {

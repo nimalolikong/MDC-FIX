@@ -1,0 +1,78 @@
+diff --git a/mozglue/misc/AutoMemory.cpp b/mozglue/misc/AutoMemory.cpp
+new file mode 100644
+--- /dev/null
++++ b/mozglue/misc/AutoMemory.cpp
+@@ -0,0 +1,73 @@
++#include "AutoMemory.h"
++
++#include <vector>
++#include <mutex>
++#include <algorithm>
++
++#include "mozilla/mozalloc.h"
++
++namespace mozilla {
++namespace glue {
++
++class AutoMemoryManager final {
++public:
++    ~AutoMemoryManager() {
++        std::lock_guard<std::mutex> lock(mutex_);
++        for (void* ptr : pointers_to_free_) {
++            free(ptr);
++        }
++    }
++
++    void* MallocAligned(size_t size, size_t alignment, bool zero_initialize) {
++        if (alignment == 0 || (alignment & (alignment - 1)) != 0) {
++             return Malloc(size, zero_initialize);
++        }
++
++        void* ptr = moz_xmemalign(alignment, size);
++        if (zero_initialize) {
++            memset(ptr, 0, size);
++        }
++        std::lock_guard<std::mutex> lock(mutex_);
++        pointers_to_free_.push_back(ptr);
++        return ptr;
++    }
++
++    void* Malloc(size_t size, bool zero_initialize) {
++        void* ptr = moz_xmalloc(size);
++        if (zero_initialize) {
++            memset(ptr, 0, size);
++        }
++        std::lock_guard<std::mutex> lock(mutex_);
++        pointers_to_free_.push_back(ptr);
++        return ptr;
++    }
++
++    static AutoMemoryManager& GetInstance() {
++        static AutoMemoryManager instance;
++        return instance;
++    }
++
++private:
++    AutoMemoryManager() = default;
++    AutoMemoryManager(const AutoMemoryManager&) = delete;
++    AutoMemoryManager& operator=(const AutoMemoryManager&) = delete;
++
++    std::vector<void*> pointers_to_free_;
++    std::mutex mutex_;
++};
++
++} // namespace glue
++} // namespace mozilla
++
++
++extern "C" {
++
++MFBT_API void* moz_persistent_alloc_ex(size_t size, bool zero_initialize) {
++    return mozilla::glue::AutoMemoryManager::GetInstance().Malloc(size, zero_initialize);
++}
++
++MFBT_API void* moz_persistent_aligned_alloc_ex(size_t size, size_t alignment, bool zero_initialize) {
++    return mozilla::glue::AutoMemoryManager::GetInstance().MallocAligned(size, alignment, zero_initialize);
++}
++
++} // extern "C"

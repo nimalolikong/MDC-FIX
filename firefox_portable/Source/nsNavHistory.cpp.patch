@@ -1,0 +1,70 @@
+diff --git a/toolkit/components/places/nsNavHistory.cpp b/toolkit/components/places/nsNavHistory.cpp
+--- a/toolkit/components/places/nsNavHistory.cpp
++++ b/toolkit/components/places/nsNavHistory.cpp
+@@ -131,41 +131,41 @@ using namespace mozilla::places;
+ 
+ // Observed topics.
+ #define TOPIC_IDLE_DAILY "idle-daily"
+ #define TOPIC_PREF_CHANGED "nsPref:changed"
+ #define TOPIC_PROFILE_TEARDOWN "profile-change-teardown"
+ #define TOPIC_PROFILE_CHANGE "profile-before-change"
+ #define TOPIC_APP_LOCALES_CHANGED "intl:app-locales-changed"
+ 
+-static const char* kObservedPrefs[] = {PREF_HISTORY_ENABLED,
+-                                       PREF_MATCH_DIACRITICS,
+-                                       PREF_FREC_NUM_VISITS,
+-                                       PREF_FREC_FIRST_BUCKET_CUTOFF,
+-                                       PREF_FREC_SECOND_BUCKET_CUTOFF,
+-                                       PREF_FREC_THIRD_BUCKET_CUTOFF,
+-                                       PREF_FREC_FOURTH_BUCKET_CUTOFF,
+-                                       PREF_FREC_FIRST_BUCKET_WEIGHT,
+-                                       PREF_FREC_SECOND_BUCKET_WEIGHT,
+-                                       PREF_FREC_THIRD_BUCKET_WEIGHT,
+-                                       PREF_FREC_FOURTH_BUCKET_WEIGHT,
+-                                       PREF_FREC_DEFAULT_BUCKET_WEIGHT,
+-                                       PREF_FREC_EMBED_VISIT_BONUS,
+-                                       PREF_FREC_FRAMED_LINK_VISIT_BONUS,
+-                                       PREF_FREC_LINK_VISIT_BONUS,
+-                                       PREF_FREC_TYPED_VISIT_BONUS,
+-                                       PREF_FREC_BOOKMARK_VISIT_BONUS,
+-                                       PREF_FREC_DOWNLOAD_VISIT_BONUS,
+-                                       PREF_FREC_PERM_REDIRECT_VISIT_BONUS,
+-                                       PREF_FREC_TEMP_REDIRECT_VISIT_BONUS,
+-                                       PREF_FREC_REDIR_SOURCE_VISIT_BONUS,
+-                                       PREF_FREC_DEFAULT_VISIT_BONUS,
+-                                       PREF_FREC_UNVISITED_BOOKMARK_BONUS,
+-                                       PREF_FREC_UNVISITED_TYPED_BONUS,
+-                                       nullptr};
++constexpr const char* kObservedPrefs[] = {PREF_HISTORY_ENABLED,
++                                          PREF_MATCH_DIACRITICS,
++                                          PREF_FREC_NUM_VISITS,
++                                          PREF_FREC_FIRST_BUCKET_CUTOFF,
++                                          PREF_FREC_SECOND_BUCKET_CUTOFF,
++                                          PREF_FREC_THIRD_BUCKET_CUTOFF,
++                                          PREF_FREC_FOURTH_BUCKET_CUTOFF,
++                                          PREF_FREC_FIRST_BUCKET_WEIGHT,
++                                          PREF_FREC_SECOND_BUCKET_WEIGHT,
++                                          PREF_FREC_THIRD_BUCKET_WEIGHT,
++                                          PREF_FREC_FOURTH_BUCKET_WEIGHT,
++                                          PREF_FREC_DEFAULT_BUCKET_WEIGHT,
++                                          PREF_FREC_EMBED_VISIT_BONUS,
++                                          PREF_FREC_FRAMED_LINK_VISIT_BONUS,
++                                          PREF_FREC_LINK_VISIT_BONUS,
++                                          PREF_FREC_TYPED_VISIT_BONUS,
++                                          PREF_FREC_BOOKMARK_VISIT_BONUS,
++                                          PREF_FREC_DOWNLOAD_VISIT_BONUS,
++                                          PREF_FREC_PERM_REDIRECT_VISIT_BONUS,
++                                          PREF_FREC_TEMP_REDIRECT_VISIT_BONUS,
++                                          PREF_FREC_REDIR_SOURCE_VISIT_BONUS,
++                                          PREF_FREC_DEFAULT_VISIT_BONUS,
++                                          PREF_FREC_UNVISITED_BOOKMARK_BONUS,
++                                          PREF_FREC_UNVISITED_TYPED_BONUS,
++                                          nullptr};
+ 
+ NS_IMPL_ADDREF(nsNavHistory)
+ NS_IMPL_RELEASE(nsNavHistory)
+ 
+ NS_IMPL_CLASSINFO(nsNavHistory, nullptr, nsIClassInfo::SINGLETON,
+                   NS_NAVHISTORYSERVICE_CID)
+ NS_INTERFACE_MAP_BEGIN(nsNavHistory)
+   NS_INTERFACE_MAP_ENTRY(nsINavHistoryService)

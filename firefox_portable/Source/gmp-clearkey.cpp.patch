@@ -1,0 +1,40 @@
+diff --git a/media/gmp-clearkey/0.1/gmp-clearkey.cpp b/media/gmp-clearkey/0.1/gmp-clearkey.cpp
+--- a/media/gmp-clearkey/0.1/gmp-clearkey.cpp
++++ b/media/gmp-clearkey/0.1/gmp-clearkey.cpp
+@@ -18,16 +18,17 @@
+ // This include is required in order for content_decryption_module to work
+ // on Unix systems.
+ #include <stddef.h>
+ #include <stdio.h>
+ #include <string.h>
+ 
+ #include <string>
+ #include <vector>
++#include <string_view>
+ 
+ #include "content_decryption_module.h"
+ #include "content_decryption_module_ext.h"
+ #include "nss.h"
+ 
+ #include "ClearKeyCDM.h"
+ #include "ClearKeySessionManager.h"
+ #include "mozilla/dom/KeySystemNames.h"
+@@ -126,17 +127,17 @@ static uint32_t NumExpectedHostFiles(con
+ #else
+   // Windows running x64 or x86 natively should also have 4 as above.
+   // For Windows on ARM64, we run an x86 plugin-contianer process under
+   // emulation, and so we expect one additional binary; the x86
+   // xul.dll used by plugin-container.exe.
+   bool i686underAArch64 = false;
+   // Assume that we're running under x86 emulation on an aarch64 host if
+   // one of the paths ends with the x86 plugin-container path we'd expect.
+-  const std::wstring plugincontainer = L"i686\\plugin-container.exe";
++  constexpr std::wstring_view plugincontainer = L"i686\\plugin-container.exe";
+   for (uint32_t i = 0; i < aNumFiles; i++) {
+     const cdm::HostFile& hostFile = aHostFiles[i];
+     if (hostFile.file != cdm::kInvalidPlatformFile) {
+       std::wstring path = hostFile.file_path;
+       auto offset = path.find(plugincontainer);
+       if (offset != std::string::npos &&
+           offset == path.size() - plugincontainer.size()) {
+         i686underAArch64 = true;

@@ -1,0 +1,41 @@
+diff --git a/security/sandbox/win/src/sandboxbroker/sandboxBroker.cpp b/security/sandbox/win/src/sandboxbroker/sandboxBroker.cpp
+--- a/security/sandbox/win/src/sandboxbroker/sandboxBroker.cpp
++++ b/security/sandbox/win/src/sandboxbroker/sandboxBroker.cpp
+@@ -378,17 +378,17 @@ static void AddDeveloperRepoDirToPolicy(
+                             L"\\??\\MountPointManager");
+   if (result != sandbox::SBOX_ALL_OK) {
+     NS_ERROR("Failed to add rule for MountPointManager.");
+     LOG_E("Failed (ResultCode %d) to add read access to MountPointManager",
+           result);
+   }
+ }
+ 
+-#if defined(MOZ_PROFILE_GENERATE)
++#if defined(MOZ_PROFILE_GENERATE) || defined(MOZ_CS_PROFILE_GENERATE)
+ // It should only be allowed on instrumented builds, never on production
+ // builds.
+ static void AddLLVMProfilePathDirectoryToPolicy(
+     sandbox::TargetPolicy* aPolicy) {
+   std::wstring parentPath;
+   if (GetLlvmProfileDir(parentPath)) {
+     aPolicy->AddRule(sandbox::TargetPolicy::SUBSYS_FILES,
+                      sandbox::TargetPolicy::FILES_ALLOW_ANY,
+@@ -493,17 +493,17 @@ Result<Ok, mozilla::ipc::LaunchError> Sa
+     mPolicy->AddRule(sandbox::TargetPolicy::SUBSYS_FILES,
+                      sandbox::TargetPolicy::FILES_ALLOW_ANY, tempPath);
+   }
+ #endif
+ 
+   // Enable the child process to write log files when setup
+   AddMozLogRulesToPolicy(mPolicy, aEnvironment);
+ 
+-#if defined(MOZ_PROFILE_GENERATE)
++#if defined(MOZ_PROFILE_GENERATE) || defined(MOZ_CS_PROFILE_GENERATE)
+   AddLLVMProfilePathDirectoryToPolicy(mPolicy);
+ #endif
+ 
+   if (!mozilla::IsPackagedBuild()) {
+     AddDeveloperRepoDirToPolicy(mPolicy);
+   }
+ 
+   // Create the sandboxed process

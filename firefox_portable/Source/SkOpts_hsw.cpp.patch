@@ -1,0 +1,35 @@
+diff --git a/gfx/skia/skia/src/opts/SkOpts_hsw.cpp b/gfx/skia/skia/src/opts/SkOpts_hsw.cpp
+--- a/gfx/skia/skia/src/opts/SkOpts_hsw.cpp
++++ b/gfx/skia/skia/src/opts/SkOpts_hsw.cpp
+@@ -12,23 +12,25 @@
+ #define SK_OPTS_NS hsw
+ #include "src/opts/SkRasterPipeline_opts.h"
+ 
+ namespace SkOpts {
+     void Init_hsw() {
+         raster_pipeline_lowp_stride  = SK_OPTS_NS::raster_pipeline_lowp_stride();
+         raster_pipeline_highp_stride = SK_OPTS_NS::raster_pipeline_highp_stride();
+ 
+-    #define M(st) ops_highp[(int)SkRasterPipelineOp::st] = (StageFn)SK_OPTS_NS::st;
+-        SK_RASTER_PIPELINE_OPS_ALL(M)
++    #define M(st) (StageFn)SK_OPTS_NS::st,
++        static const StageFn hsw_ops_highp[] = { SK_RASTER_PIPELINE_OPS_ALL(M) };
++    #undef M
++        ops_highp = hsw_ops_highp;
+         just_return_highp = (StageFn)SK_OPTS_NS::just_return;
+         start_pipeline_highp = SK_OPTS_NS::start_pipeline;
++
++    #define M(st) (StageFn)SK_OPTS_NS::lowp::st,
++        static const StageFn hsw_ops_lowp[] = { SK_RASTER_PIPELINE_OPS_LOWP(M) };
+     #undef M
+-
+-    #define M(st) ops_lowp[(int)SkRasterPipelineOp::st] = (StageFn)SK_OPTS_NS::lowp::st;
+-        SK_RASTER_PIPELINE_OPS_LOWP(M)
++        ops_lowp = hsw_ops_lowp;
+         just_return_lowp = (StageFn)SK_OPTS_NS::lowp::just_return;
+         start_pipeline_lowp = SK_OPTS_NS::lowp::start_pipeline;
+-    #undef M
+     }
+ }  // namespace SkOpts
+ 
+ #endif // SK_ENABLE_OPTIMIZE_SIZE

@@ -1,0 +1,33 @@
+diff --git a/toolkit/xre/nsAppRunner.cpp b/toolkit/xre/nsAppRunner.cpp
+--- a/toolkit/xre/nsAppRunner.cpp
++++ b/toolkit/xre/nsAppRunner.cpp
+@@ -569,24 +569,28 @@ bool BrowserTabsRemoteAutostart() {
+ 
+   gBrowserTabsRemoteAutostart = true;
+   E10sStatus status = kE10sEnabledByDefault;
+ 
+ // We are checking to ensure that either MOZILLA_OFFICIAL is undefined or that
+ // xpc::AreNonLocalConnectionsDisabled() is true. If either check matches,
+ // we move on to check the MOZ_FORCE_DISABLE_E10S environment variable which
+ // must equal "1" to proceed with disabling e10s.
+-#if defined(MOZILLA_OFFICIAL)
++#if defined(MOZILLA_OFFICIAL) && !defined(TT_MEMUTIL)
+   bool allowDisablingE10s = xpc::AreNonLocalConnectionsDisabled();
+ #else
+   bool allowDisablingE10s = true;
+ #endif
+ 
+   if (gBrowserTabsRemoteAutostart && allowDisablingE10s) {
++#if defined(TT_MEMUTIL)
++    const char* forceDisable = PR_GetEnv("TT_FORCE_DISABLE_E10S");
++#else
+     const char* forceDisable = PR_GetEnv("MOZ_FORCE_DISABLE_E10S");
++#endif
+     if (forceDisable && !strcmp(forceDisable, "1")) {
+       gBrowserTabsRemoteAutostart = false;
+       status = kE10sForceDisabled;
+     }
+   }
+ 
+   gBrowserTabsRemoteStatus = status;
+ 

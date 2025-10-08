@@ -1,0 +1,22 @@
+diff --git a/mozglue/baseprofiler/public/BaseProfilerMarkersPrerequisites.h b/mozglue/baseprofiler/public/BaseProfilerMarkersPrerequisites.h
+--- a/mozglue/baseprofiler/public/BaseProfilerMarkersPrerequisites.h
++++ b/mozglue/baseprofiler/public/BaseProfilerMarkersPrerequisites.h
+@@ -248,17 +248,17 @@ class MarkerCategory {
+ namespace baseprofiler::category {
+ 
+ // Each category pair name constructs a MarkerCategory.
+ // E.g.: mozilla::baseprofiler::category::OTHER_Profiling
+ // Profiler macros will take the category name alone without namespace.
+ // E.g.: `PROFILER_MARKER_UNTYPED("name", OTHER_Profiling)`
+ #define CATEGORY_ENUM_BEGIN_CATEGORY(name, labelAsString, color)
+ #define CATEGORY_ENUM_SUBCATEGORY(supercategory, name, labelAsString) \
+-  static constexpr MarkerCategory name{ProfilingCategoryPair::name};
++  inline constexpr MarkerCategory name{ProfilingCategoryPair::name};
+ #define CATEGORY_ENUM_END_CATEGORY
+ MOZ_PROFILING_CATEGORY_LIST(CATEGORY_ENUM_BEGIN_CATEGORY,
+                             CATEGORY_ENUM_SUBCATEGORY,
+                             CATEGORY_ENUM_END_CATEGORY)
+ #undef CATEGORY_ENUM_BEGIN_CATEGORY
+ #undef CATEGORY_ENUM_SUBCATEGORY
+ #undef CATEGORY_ENUM_END_CATEGORY
+ 

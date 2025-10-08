@@ -1,0 +1,22 @@
+diff --git a/js/src/vm/WellKnownAtom.h b/js/src/vm/WellKnownAtom.h
+--- a/js/src/vm/WellKnownAtom.h
++++ b/js/src/vm/WellKnownAtom.h
+@@ -38,17 +38,17 @@ enum class WellKnownAtomId : uint32_t {
+ };
+ 
+ struct WellKnownAtomInfo {
+   uint32_t length;
+   mozilla::HashNumber hash;
+   const char* content;
+ };
+ 
+-extern WellKnownAtomInfo wellKnownAtomInfos[];
++extern const WellKnownAtomInfo wellKnownAtomInfos[];
+ 
+ inline const WellKnownAtomInfo& GetWellKnownAtomInfo(WellKnownAtomId atomId) {
+   return wellKnownAtomInfos[uint32_t(atomId)];
+ }
+ 
+ } /* namespace js */
+ 
+ #endif  // vm_WellKnownAtom_h

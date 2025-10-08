@@ -1,0 +1,24 @@
+diff --git a/modules/libpref/Preferences.h b/modules/libpref/Preferences.h
+--- a/modules/libpref/Preferences.h
++++ b/modules/libpref/Preferences.h
+@@ -544,18 +544,18 @@ class Preferences final : public nsIPref
+   static bool InitStaticMembers();
+ };
+ 
+ extern Atomic<bool, Relaxed> sOmitBlocklistedPrefValues;
+ extern Atomic<bool, Relaxed> sCrashOnBlocklistedPref;
+ 
+ bool IsPreferenceSanitized(const char* aPref);
+ 
+-const char kFissionEnforceBlockList[] =
++inline constexpr const char kFissionEnforceBlockList[] =
+     "fission.enforceBlocklistedPrefsInSubprocesses";
+-const char kFissionOmitBlockListValues[] =
++inline constexpr const char kFissionOmitBlockListValues[] =
+     "fission.omitBlocklistedPrefsInSubprocesses";
+ 
+ void OnFissionBlocklistPrefChange(const char* aPref, void* aData);
+ 
+ }  // namespace mozilla
+ 
+ #endif  // mozilla_Preferences_h

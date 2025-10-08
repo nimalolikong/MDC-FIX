@@ -1,0 +1,135 @@
+diff --git a/third_party/rust/gl_generator/generators/struct_gen.rs b/third_party/rust/gl_generator/generators/struct_gen.rs
+--- a/third_party/rust/gl_generator/generators/struct_gen.rs
++++ b/third_party/rust/gl_generator/generators/struct_gen.rs
+@@ -166,77 +166,88 @@ where
+         }
+         try!(writeln!(dest, "pub {name}: FnPtr,", name = cmd.proto.ident));
+     }
+     try!(writeln!(dest, "_priv: ()"));
+ 
+     writeln!(dest, "}}")
+ }
+ 
++fn write_load_with_impl<W>(registry: &Registry, dest: &mut W) -> io::Result<()>
++where
++    W: io::Write,
++{
++    try!(writeln!(dest,
++        r#"
++        #[inline(never)]
++        fn load_with_impl(
++            loadfn: &mut dyn FnMut(&'static str) -> *const __gl_imports::raw::c_void
++        ) -> {api} {{
++            #[inline(never)]
++            fn do_metaloadfn(loadfn: &mut dyn FnMut(&'static str) -> *const __gl_imports::raw::c_void,
++                             symbol: &'static str,
++                             symbols: &[&'static str])
++                             -> *const __gl_imports::raw::c_void {{
++                let mut ptr = loadfn(symbol);
++                if ptr.is_null() {{
++                    for &sym in symbols {{
++                        ptr = loadfn(sym);
++                        if !ptr.is_null() {{ break; }}
++                    }}
++                }}
++                ptr
++            }}
++            let mut metaloadfn = |symbol: &'static str, symbols: &[&'static str]| {{
++                do_metaloadfn(&mut *loadfn, symbol, symbols)
++            }};
++            {api} {{"#,
++        api = super::gen_struct_name(registry.api)
++    ));
++
++    for cmd in &registry.cmds {
++        try!(writeln!(dest, "{name}: FnPtr::new(metaloadfn(\"{symbol}\", &[{fallbacks}])),",
++            name = cmd.proto.ident,
++            symbol = super::gen_symbol_name(registry.api, &cmd.proto.ident),
++            fallbacks = match registry.aliases.get(&cmd.proto.ident) {
++                Some(fbs) => fbs
++                    .iter()
++                    .map(|name| format!("\"{}\"", super::gen_symbol_name(registry.api, name)))
++                    .collect::<Vec<_>>()
++                    .join(", "),
++                None => format!(""),
++            },
++        ));
++    }
++
++    writeln!(dest, "_priv: () }} }}")
++}
++
+ /// Creates the `impl` of the structure created by `write_struct`.
+ fn write_impl<W>(registry: &Registry, dest: &mut W) -> io::Result<()>
+ where
+     W: io::Write,
+ {
++    try!(write_load_with_impl(registry, dest));
++
+     try!(writeln!(dest,
+                   "impl {api} {{
+             /// Load each OpenGL symbol using a custom load function. This allows for the
+             /// use of functions like `glfwGetProcAddress` or `SDL_GL_GetProcAddress`.
+             ///
+             /// ~~~ignore
+             /// let gl = Gl::load_with(|s| glfw.get_proc_address(s));
+             /// ~~~
+             #[allow(dead_code, unused_variables)]
++            #[inline]
+             pub fn load_with<F>(mut loadfn: F) -> {api} where F: FnMut(&'static str) -> *const __gl_imports::raw::c_void {{
+-                #[inline(never)]
+-                fn do_metaloadfn(loadfn: &mut dyn FnMut(&'static str) -> *const __gl_imports::raw::c_void,
+-                                 symbol: &'static str,
+-                                 symbols: &[&'static str])
+-                                 -> *const __gl_imports::raw::c_void {{
+-                    let mut ptr = loadfn(symbol);
+-                    if ptr.is_null() {{
+-                        for &sym in symbols {{
+-                            ptr = loadfn(sym);
+-                            if !ptr.is_null() {{ break; }}
+-                        }}
+-                    }}
+-                    ptr
+-                }}
+-                let mut metaloadfn = |symbol: &'static str, symbols: &[&'static str]| {{
+-                    do_metaloadfn(&mut loadfn, symbol, symbols)
+-                }};
+-                {api} {{",
++                load_with_impl(&mut loadfn)
++            }}",
+                   api = super::gen_struct_name(registry.api)));
+ 
+     for cmd in &registry.cmds {
+-        try!(writeln!(
+-            dest,
+-            "{name}: FnPtr::new(metaloadfn(\"{symbol}\", &[{fallbacks}])),",
+-            name = cmd.proto.ident,
+-            symbol = super::gen_symbol_name(registry.api, &cmd.proto.ident),
+-            fallbacks = match registry.aliases.get(&cmd.proto.ident) {
+-                Some(fbs) => fbs
+-                    .iter()
+-                    .map(|name| format!("\"{}\"", super::gen_symbol_name(registry.api, &name)))
+-                    .collect::<Vec<_>>()
+-                    .join(", "),
+-                None => format!(""),
+-            },
+-        ))
+-    }
+-
+-    try!(writeln!(dest, "_priv: ()"));
+-
+-    try!(writeln!(
+-        dest,
+-        "}}
+-        }}"
+-    ));
+-
+-    for cmd in &registry.cmds {
+         try!(writeln!(dest,
+             "#[allow(non_snake_case, unused_variables, dead_code)]
+             #[inline] pub unsafe fn {name}(&self, {params}) -> {return_suffix} {{ \
+                 __gl_imports::mem::transmute::<_, extern \"system\" fn({typed_params}) -> {return_suffix}>\
+                     (self.{name}.f)({idents}) \
+             }}",
+             name = cmd.proto.ident,
+             params = super::gen_parameters(cmd, true, true).join(", "),

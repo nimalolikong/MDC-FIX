@@ -1,0 +1,22 @@
+diff --git a/dom/media/platforms/PlatformDecoderModule.h b/dom/media/platforms/PlatformDecoderModule.h
+--- a/dom/media/platforms/PlatformDecoderModule.h
++++ b/dom/media/platforms/PlatformDecoderModule.h
+@@ -34,17 +34,17 @@ class DecoderDoctorDiagnostics;
+ namespace layers {
+ class ImageContainer;
+ }  // namespace layers
+ 
+ class MediaDataDecoder;
+ class RemoteDecoderModule;
+ class CDMProxy;
+ 
+-static LazyLogModule sPDMLog("PlatformDecoderModule");
++inline LazyLogModule sPDMLog("PlatformDecoderModule");
+ 
+ namespace media {
+ 
+ template <typename T>
+ static nsCString EnumSetToString(const EnumSet<T>& aSet) {
+   nsCString str;
+   for (const auto e : aSet) {
+     if (!str.IsEmpty()) {

@@ -1,0 +1,84 @@
+diff --git a/third_party/rlbox_wasm2c_sandbox/include/rlbox_wasm2c_sandbox.hpp b/third_party/rlbox_wasm2c_sandbox/include/rlbox_wasm2c_sandbox.hpp
+--- a/third_party/rlbox_wasm2c_sandbox/include/rlbox_wasm2c_sandbox.hpp
++++ b/third_party/rlbox_wasm2c_sandbox/include/rlbox_wasm2c_sandbox.hpp
+@@ -364,20 +364,21 @@ private:
+         impl_get_unsandboxed_pointer<T_FormalRet*>(arg));
+       T_FormalRet ret = *ptr;
+       return ret;
+     } else {
+       return arg;
+     }
+   }
+ 
+-  template<uint32_t N, typename T_Ret, typename... T_Args>
++  template<typename T_Ret, typename... T_Args>
++  MOZ_NEVER_INLINE
+   static typename wasm2c_detail::convert_type_to_wasm_type<T_Ret>::type
+-  callback_interceptor(
+-    void* /* vmContext */,
++  callback_interceptor_impl(
++    uint32_t N,
+     typename wasm2c_detail::convert_type_to_wasm_type<T_Args>::type... params)
+   {
+ #ifdef RLBOX_EMBEDDER_PROVIDES_TLS_STATIC_VARIABLES
+     auto& thread_data = *get_rlbox_wasm2c_sandbox_thread_data();
+ #endif
+     thread_data.last_callback_invoked = N;
+     using T_Func = T_Ret (*)(T_Args...);
+     T_Func func;
+@@ -390,18 +391,28 @@ private:
+     // Callbacks are invoked through function pointers, cannot use std::forward
+     // as we don't have caller context for T_Args, which means they are all
+     // effectively passed by value
+     return func(
+       thread_data.sandbox->template serialize_to_sandbox<T_Args>(params)...);
+   }
+ 
+   template<uint32_t N, typename T_Ret, typename... T_Args>
+-  static void callback_interceptor_promoted(
++  static inline typename wasm2c_detail::convert_type_to_wasm_type<T_Ret>::type
++  callback_interceptor(
+     void* /* vmContext */,
++    typename wasm2c_detail::convert_type_to_wasm_type<T_Args>::type... params)
++  {
++    return callback_interceptor_impl<T_Ret, T_Args...>(N, params...);
++  }
++
++  template<typename T_Ret, typename... T_Args>
++  MOZ_NEVER_INLINE
++  static void callback_interceptor_promoted_impl(
++    uint32_t N,
+     typename wasm2c_detail::convert_type_to_wasm_type<T_Ret>::type ret,
+     typename wasm2c_detail::convert_type_to_wasm_type<T_Args>::type... params)
+   {
+ #ifdef RLBOX_EMBEDDER_PROVIDES_TLS_STATIC_VARIABLES
+     auto& thread_data = *get_rlbox_wasm2c_sandbox_thread_data();
+ #endif
+     thread_data.last_callback_invoked = N;
+     using T_Func = T_Ret (*)(T_Args...);
+@@ -418,16 +429,25 @@ private:
+     auto ret_val = func(
+       thread_data.sandbox->template serialize_to_sandbox<T_Args>(params)...);
+     // Copy the return value back
+     auto ret_ptr = reinterpret_cast<T_Ret*>(
+       thread_data.sandbox->template impl_get_unsandboxed_pointer<T_Ret*>(ret));
+     *ret_ptr = ret_val;
+   }
+ 
++  template<uint32_t N, typename T_Ret, typename... T_Args>
++  static inline void callback_interceptor_promoted(
++    void* /* vmContext */,
++    typename wasm2c_detail::convert_type_to_wasm_type<T_Ret>::type ret,
++    typename wasm2c_detail::convert_type_to_wasm_type<T_Args>::type... params)
++  {
++    callback_interceptor_promoted_impl<T_Ret, T_Args...>(N, ret, params...);
++  }
++
+   template<typename T_Ret, typename... T_Args>
+   inline wasm_rt_func_type_t get_wasm2c_func_index(
+     // dummy for template inference
+     T_Ret (*)(T_Args...) = nullptr) const
+   {
+     // Class return types as promoted to args
+     constexpr bool promoted = std::is_class_v<T_Ret>;
+     constexpr uint32_t param_count =

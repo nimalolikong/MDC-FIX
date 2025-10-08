@@ -1,0 +1,53 @@
+diff --git a/xpcom/base/CycleCollectedJSRuntime.cpp b/xpcom/base/CycleCollectedJSRuntime.cpp
+--- a/xpcom/base/CycleCollectedJSRuntime.cpp
++++ b/xpcom/base/CycleCollectedJSRuntime.cpp
+@@ -48,16 +48,20 @@
+ // will already be marked by the JS GC and will thus be colored black
+ // themselves. Any C++ objects they hold will have a missing (untraversed)
+ // edge from the JS object to the C++ object and so it will be marked black
+ // too. This decreases the number of objects that the cycle collector has to
+ // deal with.
+ // To improve debugging, if WantAllTraces() is true all JS objects are
+ // traversed.
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++#include <xmmintrin.h>
++#endif
++
+ #include "mozilla/CycleCollectedJSRuntime.h"
+ 
+ #include <algorithm>
+ #include <utility>
+ 
+ #include "js/Debug.h"
+ #include "js/RealmOptions.h"
+ #include "js/friend/DumpFunctions.h"  // js::DumpHeap
+@@ -1596,21 +1600,27 @@ bool CycleCollectedJSRuntime::TraceJSHol
+ #ifdef CHECK_SINGLE_ZONE_JS_HOLDERS
+     if (checkSingleZoneHolders && tracer->IsSingleZoneJSHolder()) {
+       CheckHolderIsSingleZone(holder, tracer, aIter.Zone());
+     }
+ #else
+     Unused << checkSingleZoneHolders;
+ #endif
+ 
++    aIter.Next();
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++    if (!aIter.Done()) {
++      _mm_prefetch((char *)aIter->mHolder, _MM_HINT_NTA);
++      _mm_prefetch((char *)aIter->mHolder + 64, _MM_HINT_NTA);
++    }
++#endif
+     functor.SetHolder(holder);
+     tracer->Trace(holder, JsGcTracer(), aTracer);
+     functor.SetHolder(nullptr);
+ 
+-    aIter.Next();
+     aBudget.step();
+   }
+ 
+   return aIter.Done();
+ }
+ 
+ void CycleCollectedJSRuntime::AddJSHolder(void* aHolder,
+                                           nsScriptObjectTracer* aTracer,

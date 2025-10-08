@@ -1,0 +1,458 @@
+diff --git a/compiler/rustc_codegen_llvm/src/attributes.rs b/compiler/rustc_codegen_llvm/src/attributes.rs
+index 3d7afa17bdf..a3b909f7fbe 100644
+--- a/compiler/rustc_codegen_llvm/src/attributes.rs
++++ b/compiler/rustc_codegen_llvm/src/attributes.rs
+@@ -224,18 +224,19 @@ fn probestack_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
+         .opts
+         .unstable_opts
+         .sanitizer
+         .intersects(SanitizerSet::ADDRESS | SanitizerSet::THREAD)
+     {
+         return None;
+     }
+ 
+-    // probestack doesn't play nice either with `-C profile-generate`.
+-    if cx.sess().opts.cg.profile_generate.enabled() {
++    // probestack doesn't play nice either with PGO instrumentation
++    if cx.sess().opts.cg.profile_generate.enabled()
++        || cx.sess().opts.cg.cs_profile_generate.enabled() {
+         return None;
+     }
+ 
+     let attr_value = match cx.sess().target.stack_probes {
+         StackProbeType::None => return None,
+         // Request LLVM to generate the probes inline. If the given LLVM version does not support
+         // this, no probe is generated at all (even if the attribute is specified).
+         StackProbeType::Inline => "inline-asm",
+diff --git a/compiler/rustc_codegen_llvm/src/back/write.rs b/compiler/rustc_codegen_llvm/src/back/write.rs
+index 9fa10e96068..616e387d83f 100644
+--- a/compiler/rustc_codegen_llvm/src/back/write.rs
++++ b/compiler/rustc_codegen_llvm/src/back/write.rs
+@@ -514,16 +514,31 @@ fn get_pgo_gen_path(config: &ModuleConfig) -> Option<CString> {
+             };
+ 
+             Some(CString::new(format!("{}", path.display())).unwrap())
+         }
+         SwitchWithOptPath::Disabled => None,
+     }
+ }
+ 
++fn get_cspgo_gen_path(config: &ModuleConfig) -> Option<CString> {
++    match config.cspgo_gen {
++        SwitchWithOptPath::Enabled(ref opt_dir_path) => {
++            let path = if let Some(dir_path) = opt_dir_path {
++                dir_path.join("default_%m.profraw")
++            } else {
++                PathBuf::from("default_%m.profraw")
++            };
++
++            Some(CString::new(format!("{}", path.display())).unwrap())
++        }
++        SwitchWithOptPath::Disabled => None,
++    }
++}
++
+ fn get_pgo_use_path(config: &ModuleConfig) -> Option<CString> {
+     config
+         .pgo_use
+         .as_ref()
+         .map(|path_buf| CString::new(path_buf.to_string_lossy().as_bytes()).unwrap())
+ }
+ 
+ fn get_pgo_sample_use_path(config: &ModuleConfig) -> Option<CString> {
+@@ -584,16 +599,17 @@ pub(crate) unsafe fn llvm_optimize(
+         unroll_loops =
+             opt_level != config::OptLevel::Size && opt_level != config::OptLevel::SizeMin;
+         vectorize_slp = config.vectorize_slp;
+         vectorize_loop = config.vectorize_loop;
+     }
+     trace!(?unroll_loops, ?vectorize_slp, ?vectorize_loop, ?run_enzyme);
+     let using_thin_buffers = opt_stage == llvm::OptStage::PreLinkThinLTO || config.bitcode_needed();
+     let pgo_gen_path = get_pgo_gen_path(config);
++    let cspgo_gen_path = get_cspgo_gen_path(config);
+     let pgo_use_path = get_pgo_use_path(config);
+     let pgo_sample_use_path = get_pgo_sample_use_path(config);
+     let is_lto = opt_stage == llvm::OptStage::ThinLTO || opt_stage == llvm::OptStage::FatLTO;
+     let instr_profile_output_path = get_instr_profile_output_path(config);
+     let sanitize_dataflow_abilist: Vec<_> = config
+         .sanitizer_dataflow_abilist
+         .iter()
+         .map(|file| CString::new(file.as_str()).unwrap())
+@@ -652,16 +668,17 @@ pub(crate) unsafe fn llvm_optimize(
+             unroll_loops,
+             vectorize_slp,
+             vectorize_loop,
+             config.no_builtins,
+             config.emit_lifetime_markers,
+             run_enzyme,
+             sanitizer_options.as_ref(),
+             pgo_gen_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
++            cspgo_gen_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
+             pgo_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
+             config.instrument_coverage,
+             instr_profile_output_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
+             pgo_sample_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
+             config.debug_info_for_profiling,
+             llvm_selfprofiler,
+             selfprofile_before_pass_callback,
+             selfprofile_after_pass_callback,
+diff --git a/compiler/rustc_codegen_llvm/src/llvm/ffi.rs b/compiler/rustc_codegen_llvm/src/llvm/ffi.rs
+index 7f6f82eae48..c12b7978395 100644
+--- a/compiler/rustc_codegen_llvm/src/llvm/ffi.rs
++++ b/compiler/rustc_codegen_llvm/src/llvm/ffi.rs
+@@ -2425,16 +2425,17 @@ pub(crate) fn LLVMRustOptimize<'a>(
+         UnrollLoops: bool,
+         SLPVectorize: bool,
+         LoopVectorize: bool,
+         DisableSimplifyLibCalls: bool,
+         EmitLifetimeMarkers: bool,
+         RunEnzyme: bool,
+         SanitizerOptions: Option<&SanitizerOptions>,
+         PGOGenPath: *const c_char,
++        CSPGOGenPath: *const c_char,
+         PGOUsePath: *const c_char,
+         InstrumentCoverage: bool,
+         InstrProfileOutput: *const c_char,
+         PGOSampleUsePath: *const c_char,
+         DebugInfoForProfiling: bool,
+         llvm_selfprofiler: *mut c_void,
+         begin_callback: SelfProfileBeforePassCallback,
+         end_callback: SelfProfileAfterPassCallback,
+diff --git a/compiler/rustc_codegen_ssa/src/back/link.rs b/compiler/rustc_codegen_ssa/src/back/link.rs
+index 105a4cb81f0..93d2b35691c 100644
+--- a/compiler/rustc_codegen_ssa/src/back/link.rs
++++ b/compiler/rustc_codegen_ssa/src/back/link.rs
+@@ -2545,17 +2545,19 @@ fn add_order_independent_options(
+     // Try to strip as much out of the generated object by removing unused
+     // sections if possible. See more comments in linker.rs
+     if !sess.link_dead_code() {
+         // If PGO is enabled sometimes gc_sections will remove the profile data section
+         // as it appears to be unused. This can then cause the PGO profile file to lose
+         // some functions. If we are generating a profile we shouldn't strip those metadata
+         // sections to ensure we have all the data for PGO.
+         let keep_metadata =
+-            crate_type == CrateType::Dylib || sess.opts.cg.profile_generate.enabled();
++            crate_type == CrateType::Dylib
++                || sess.opts.cg.profile_generate.enabled()
++                || sess.opts.cg.cs_profile_generate.enabled();
+         if crate_type != CrateType::Executable || !sess.opts.unstable_opts.export_executable_symbols
+         {
+             cmd.gc_sections(keep_metadata);
+         } else {
+             cmd.no_gc_sections();
+         }
+     }
+ 
+@@ -2578,17 +2580,19 @@ fn add_order_independent_options(
+     cmd.debuginfo(sess.opts.cg.strip, &natvis_visualizers);
+ 
+     // We want to prevent the compiler from accidentally leaking in any system libraries,
+     // so by default we tell linkers not to link to any default libraries.
+     if !sess.opts.cg.default_linker_libraries && sess.target.no_default_libraries {
+         cmd.no_default_libraries();
+     }
+ 
+-    if sess.opts.cg.profile_generate.enabled() || sess.instrument_coverage() {
++    if sess.opts.cg.profile_generate.enabled()
++        || sess.opts.cg.cs_profile_generate.enabled()
++        || sess.instrument_coverage() {
+         cmd.pgo_gen();
+     }
+ 
+     if sess.opts.cg.control_flow_guard != CFGuard::Disabled {
+         cmd.control_flow_guard();
+     }
+ 
+     // OBJECT-FILES-NO, AUDIT-ORDER
+diff --git a/compiler/rustc_codegen_ssa/src/back/symbol_export.rs b/compiler/rustc_codegen_ssa/src/back/symbol_export.rs
+index 1dbaffaa577..809e2900ead 100644
+--- a/compiler/rustc_codegen_ssa/src/back/symbol_export.rs
++++ b/compiler/rustc_codegen_ssa/src/back/symbol_export.rs
+@@ -240,17 +240,19 @@ fn exported_symbols_provider_local(
+             SymbolExportInfo {
+                 level: SymbolExportLevel::Rust,
+                 kind: SymbolExportKind::Data,
+                 used: false,
+             },
+         ))
+     }
+ 
+-    if tcx.sess.instrument_coverage() || tcx.sess.opts.cg.profile_generate.enabled() {
++    if tcx.sess.instrument_coverage()
++        || tcx.sess.opts.cg.profile_generate.enabled()
++        || tcx.sess.opts.cg.cs_profile_generate.enabled() {
+         // These are weak symbols that point to the profile version and the
+         // profile name, which need to be treated as exported so LTO doesn't nix
+         // them.
+         const PROFILER_WEAK_SYMBOLS: [&str; 2] =
+             ["__llvm_profile_raw_version", "__llvm_profile_filename"];
+ 
+         symbols.extend(PROFILER_WEAK_SYMBOLS.iter().map(|sym| {
+             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
+diff --git a/compiler/rustc_codegen_ssa/src/back/write.rs b/compiler/rustc_codegen_ssa/src/back/write.rs
+index f029c08a808..19736e1bd76 100644
+--- a/compiler/rustc_codegen_ssa/src/back/write.rs
++++ b/compiler/rustc_codegen_ssa/src/back/write.rs
+@@ -81,16 +81,17 @@ pub struct ModuleConfig {
+     /// Some(level) to optimize at a certain level, or None to run
+     /// absolutely no optimizations (used for the metadata module).
+     pub opt_level: Option<config::OptLevel>,
+ 
+     /// Some(level) to optimize binary size, or None to not affect program size.
+     pub opt_size: Option<config::OptLevel>,
+ 
+     pub pgo_gen: SwitchWithOptPath,
++    pub cspgo_gen: SwitchWithOptPath,
+     pub pgo_use: Option<PathBuf>,
+     pub pgo_sample_use: Option<PathBuf>,
+     pub debug_info_for_profiling: bool,
+     pub instrument_coverage: bool,
+ 
+     pub sanitizer: SanitizerSet,
+     pub sanitizer_recover: SanitizerSet,
+     pub sanitizer_dataflow_abilist: Vec<String>,
+@@ -175,16 +176,20 @@ macro_rules! if_regular {
+ 
+             opt_level: opt_level_and_size,
+             opt_size: opt_level_and_size,
+ 
+             pgo_gen: if_regular!(
+                 sess.opts.cg.profile_generate.clone(),
+                 SwitchWithOptPath::Disabled
+             ),
++            cspgo_gen: if_regular!(
++                sess.opts.cg.cs_profile_generate.clone(),
++                SwitchWithOptPath::Disabled
++            ),
+             pgo_use: if_regular!(sess.opts.cg.profile_use.clone(), None),
+             pgo_sample_use: if_regular!(sess.opts.unstable_opts.profile_sample_use.clone(), None),
+             debug_info_for_profiling: sess.opts.unstable_opts.debug_info_for_profiling,
+             instrument_coverage: if_regular!(sess.instrument_coverage(), false),
+ 
+             sanitizer: if_regular!(sess.opts.unstable_opts.sanitizer, SanitizerSet::empty()),
+             sanitizer_dataflow_abilist: if_regular!(
+                 sess.opts.unstable_opts.sanitizer_dataflow_abilist.clone(),
+diff --git a/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp b/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp
+index a6b2384f2d7..d855d70afce 100644
+--- a/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp
++++ b/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp
+@@ -42,16 +42,17 @@
+ #include <set>
+ #include <string>
+ #include <vector>
+ 
+ // Conditional includes prevent clang-format from fully sorting the list,
+ // so keep them separate.
+ #if LLVM_VERSION_GE(19, 0)
+ #include "llvm/Support/PGOOptions.h"
++#include "llvm/ProfileData/InstrProfReader.h"
+ #endif
+ 
+ using namespace llvm;
+ 
+ static codegen::RegisterCodeGenFlags CGF;
+ 
+ typedef struct LLVMOpaquePass *LLVMPassRef;
+ typedef struct LLVMOpaqueTargetMachine *LLVMTargetMachineRef;
+@@ -688,24 +689,37 @@ struct LLVMRustSanitizerOptions {
+   bool SanitizeKernelAddressRecover;
+ };
+ 
+ // This symbol won't be available or used when Enzyme is not enabled
+ #ifdef ENZYME
+ extern "C" void registerEnzyme(llvm::PassBuilder &PB);
+ #endif
+ 
++static bool hasCSIRLevelProfile(const char *Filename) {
++  auto FS = vfs::getRealFileSystem();
++  auto ReaderOrErr = llvm::IndexedInstrProfReader::create(Filename, *FS);
++  if (auto E = ReaderOrErr.takeError()) {
++    auto ErrMsg = llvm::toString(std::move(E));
++    LLVMRustSetLastError(ErrMsg.c_str());
++    return false;
++  }
++  auto Reader = std::move(ReaderOrErr.get());
++  return Reader->hasCSIRLevelProfile();
++}
++
+ extern "C" LLVMRustResult LLVMRustOptimize(
+     LLVMModuleRef ModuleRef, LLVMTargetMachineRef TMRef,
+     LLVMRustPassBuilderOptLevel OptLevelRust, LLVMRustOptStage OptStage,
+     bool IsLinkerPluginLTO, bool NoPrepopulatePasses, bool VerifyIR,
+     bool LintIR, bool UseThinLTOBuffers, bool MergeFunctions, bool UnrollLoops,
+     bool SLPVectorize, bool LoopVectorize, bool DisableSimplifyLibCalls,
+     bool EmitLifetimeMarkers, bool RunEnzyme,
+     LLVMRustSanitizerOptions *SanitizerOptions, const char *PGOGenPath,
++    const char *CSPGOGenPath,
+     const char *PGOUsePath, bool InstrumentCoverage,
+     const char *InstrProfileOutput, const char *PGOSampleUsePath,
+     bool DebugInfoForProfiling, void *LlvmSelfProfiler,
+     LLVMRustSelfProfileBeforePassCallback BeforePassCallback,
+     LLVMRustSelfProfileAfterPassCallback AfterPassCallback,
+     const char *ExtraPasses, size_t ExtraPassesLen, const char *LLVMPlugins,
+     size_t LLVMPluginsLen) {
+   Module *TheModule = unwrap(ModuleRef);
+@@ -733,18 +747,23 @@ extern "C" LLVMRustResult LLVMRustOptimize(
+     PGOOpt = PGOOptions(PGOGenPath, "", "", "", FS, PGOOptions::IRInstr,
+                         PGOOptions::NoCSAction,
+ #if LLVM_VERSION_GE(19, 0)
+                         PGOOptions::ColdFuncOpt::Default,
+ #endif
+                         DebugInfoForProfiling);
+   } else if (PGOUsePath) {
+     assert(!PGOSampleUsePath);
+-    PGOOpt = PGOOptions(PGOUsePath, "", "", "", FS, PGOOptions::IRUse,
+-                        PGOOptions::NoCSAction,
++    auto CSAction = !CSPGOGenPath
++        ? (!hasCSIRLevelProfile(PGOUsePath)
++            ? PGOOptions::NoCSAction : PGOOptions::CSIRUse)
++        : PGOOptions::CSIRInstr;
++    auto CSProfileGenPath = !CSPGOGenPath ? "" : CSPGOGenPath;
++    PGOOpt = PGOOptions(PGOUsePath, CSProfileGenPath, "", "", FS, PGOOptions::IRUse,
++                        CSAction,
+ #if LLVM_VERSION_GE(19, 0)
+                         PGOOptions::ColdFuncOpt::Default,
+ #endif
+                         DebugInfoForProfiling);
+   } else if (PGOSampleUsePath) {
+     PGOOpt = PGOOptions(PGOSampleUsePath, "", "", "", FS, PGOOptions::SampleUse,
+                         PGOOptions::NoCSAction,
+ #if LLVM_VERSION_GE(19, 0)
+diff --git a/compiler/rustc_metadata/src/creader.rs b/compiler/rustc_metadata/src/creader.rs
+index c2dda21bb72..3fecf972c3e 100644
+--- a/compiler/rustc_metadata/src/creader.rs
++++ b/compiler/rustc_metadata/src/creader.rs
+@@ -933,17 +933,18 @@ fn inject_panic_runtime(&mut self, krate: &ast::Crate) {
+         }
+ 
+         self.cstore.injected_panic_runtime = Some(cnum);
+         self.inject_dependency_if(cnum, "a panic runtime", &|data| data.needs_panic_runtime());
+     }
+ 
+     fn inject_profiler_runtime(&mut self) {
+         let needs_profiler_runtime =
+-            self.sess.instrument_coverage() || self.sess.opts.cg.profile_generate.enabled();
++            self.sess.instrument_coverage() || self.sess.opts.cg.profile_generate.enabled()
++                || self.sess.opts.cg.cs_profile_generate.enabled();
+         if !needs_profiler_runtime || self.sess.opts.unstable_opts.no_profiler_runtime {
+             return;
+         }
+ 
+         info!("loading profiler");
+ 
+         let name = Symbol::intern(&self.sess.opts.unstable_opts.profiler_runtime);
+         let Some(cnum) = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit) else {
+diff --git a/compiler/rustc_session/src/config.rs b/compiler/rustc_session/src/config.rs
+index 7d473b86ff5..07a9db55cf0 100644
+--- a/compiler/rustc_session/src/config.rs
++++ b/compiler/rustc_session/src/config.rs
+@@ -2405,21 +2405,31 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
+     let incremental = cg.incremental.as_ref().map(PathBuf::from);
+ 
+     let assert_incr_state = parse_assert_incr_state(early_dcx, &unstable_opts.assert_incr_state);
+ 
+     if cg.profile_generate.enabled() && cg.profile_use.is_some() {
+         early_dcx.early_fatal("options `-C profile-generate` and `-C profile-use` are exclusive");
+     }
+ 
++    if cg.profile_generate.enabled() && cg.cs_profile_generate.enabled() {
++        early_dcx.early_fatal("options `-C profile-generate` and `-C cs-profile-generate` are exclusive");
++    }
++
++    if cg.cs_profile_generate.enabled() && cg.profile_use.is_none() {
++        early_dcx.early_fatal("option `-C cs-profile-generate` requires `-C profile-use` to be specified");
++    }
++
+     if unstable_opts.profile_sample_use.is_some()
+-        && (cg.profile_generate.enabled() || cg.profile_use.is_some())
++        && (cg.profile_generate.enabled() || cg.cs_profile_generate.enabled() || cg.profile_use.is_some())
+     {
+         early_dcx.early_fatal(
+-            "option `-Z profile-sample-use` cannot be used with `-C profile-generate` or `-C profile-use`",
++            "option `-Z profile-sample-use` cannot be used with `-C profile-generate` \
++             or `-C cs-profile-generate` \
++             or `-C profile-use`",
+         );
+     }
+ 
+     // Check for unstable values of `-C symbol-mangling-version`.
+     // This is what prevents them from being used on stable compilers.
+     match cg.symbol_mangling_version {
+         // Stable values:
+         None | Some(SymbolManglingVersion::V0) => {}
+@@ -2437,19 +2447,20 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
+                 early_dcx.early_fatal(
+                     "`-C symbol-mangling-version=hashed` requires `-Z unstable-options`",
+                 );
+             }
+         }
+     }
+ 
+     if cg.instrument_coverage != InstrumentCoverage::No {
+-        if cg.profile_generate.enabled() || cg.profile_use.is_some() {
++        if cg.profile_generate.enabled() || cg.cs_profile_generate.enabled() || cg.profile_use.is_some() {
+             early_dcx.early_fatal(
+                 "option `-C instrument-coverage` is not compatible with either `-C profile-use` \
++                or `-C cs-profile-generate` \
+                 or `-C profile-generate`",
+             );
+         }
+ 
+         // `-C instrument-coverage` implies `-C symbol-mangling-version=v0` - to ensure consistent
+         // and reversible name mangling. Note, LLVM coverage tools can analyze coverage over
+         // multiple runs, including some changes to source code; so mangled names must be consistent
+         // across compilations.
+diff --git a/compiler/rustc_session/src/options.rs b/compiler/rustc_session/src/options.rs
+index 35819f896c5..eb29dc82487 100644
+--- a/compiler/rustc_session/src/options.rs
++++ b/compiler/rustc_session/src/options.rs
+@@ -2020,16 +2020,19 @@ pub(crate) fn parse_align(slot: &mut Option<Align>, v: Option<&str>) -> bool {
+         "panic strategy to compile crate with"),
+     passes: Vec<String> = (Vec::new(), parse_list, [TRACKED],
+         "a list of extra LLVM passes to run (space separated)"),
+     prefer_dynamic: bool = (false, parse_bool, [TRACKED],
+         "prefer dynamic linking to static linking (default: no)"),
+     profile_generate: SwitchWithOptPath = (SwitchWithOptPath::Disabled,
+         parse_switch_with_opt_path, [TRACKED],
+         "compile the program with profiling instrumentation"),
++    cs_profile_generate: SwitchWithOptPath = (SwitchWithOptPath::Disabled,
++        parse_switch_with_opt_path, [TRACKED],
++        "compile the program with context-sensitive profiling instrumentation"),
+     profile_use: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
+         "use the given `.profdata` file for profile-guided optimization"),
+     #[rustc_lint_opt_deny_field_access("use `Session::relocation_model` instead of this field")]
+     relocation_model: Option<RelocModel> = (None, parse_relocation_model, [TRACKED],
+         "control generation of position-independent code (PIC) \
+         (`rustc --print relocation-models` for details)"),
+     relro_level: Option<RelroLevel> = (None, parse_relro_level, [TRACKED],
+         "choose which RELRO level to use"),
+diff --git a/src/tools/run-make-support/src/external_deps/rustc.rs b/src/tools/run-make-support/src/external_deps/rustc.rs
+index fd4a20278ad..e136a90ee50 100644
+--- a/src/tools/run-make-support/src/external_deps/rustc.rs
++++ b/src/tools/run-make-support/src/external_deps/rustc.rs
+@@ -202,16 +202,25 @@ pub fn incremental<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+     pub fn profile_generate<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+         let mut arg = OsString::new();
+         arg.push("-Cprofile-generate=");
+         arg.push(path.as_ref());
+         self.cmd.arg(&arg);
+         self
+     }
+ 
++    /// Specify directory path used for Context-Sensitive profile generation
++    pub fn cs_profile_generate<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
++        let mut arg = OsString::new();
++        arg.push("-Cprofile-generate=");
++        arg.push(path.as_ref());
++        self.cmd.arg(&arg);
++        self
++    }
++
+     /// Specify directory path used for profile usage
+     pub fn profile_use<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+         let mut arg = OsString::new();
+         arg.push("-Cprofile-use=");
+         arg.push(path.as_ref());
+         self.cmd.arg(&arg);
+         self
+     }

@@ -1,0 +1,56 @@
+diff --git a/layout/base/RestyleManager.cpp b/layout/base/RestyleManager.cpp
+--- a/layout/base/RestyleManager.cpp
++++ b/layout/base/RestyleManager.cpp
+@@ -1,14 +1,18 @@
+ /* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+ /* vim: set ts=8 sts=2 et sw=2 tw=80: */
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++#include <xmmintrin.h>
++#endif
++
+ #include "mozilla/RestyleManager.h"
+ 
+ #include "ActiveLayerTracker.h"
+ #include "ScrollSnap.h"
+ #include "StickyScrollContainer.h"
+ #include "mozilla/AnimationUtils.h"
+ #include "mozilla/Assertions.h"
+ #include "mozilla/ComputedStyle.h"
+@@ -3058,24 +3062,32 @@ bool RestyleManager::ProcessPostTraversa
+   const bool traverseTextChildren =
+       wasRestyled || aElement->HasFlag(NODE_DESCENDANTS_NEED_FRAMES);
+   bool recreatedAnyContext = wasRestyled;
+   if (traverseElementChildren || traverseTextChildren) {
+     StyleChildrenIterator it(aElement);
+     TextPostTraversalState textState(*aElement, upToDateStyle,
+                                      isDisplayContents && wasRestyled,
+                                      childrenRestyleState);
+-    for (nsIContent* n = it.GetNextChild(); n; n = it.GetNextChild()) {
++    for (nsIContent* n = it.GetNextChild(); n;) {
++      nsIContent* nNext = it.GetNextChild();
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++      if (nNext) {
++        _mm_prefetch((char *)nNext, _MM_HINT_NTA);
++        _mm_prefetch((char *)nNext + 64, _MM_HINT_NTA);
++      }
++#endif
+       if (traverseElementChildren && n->IsElement()) {
+         recreatedAnyContext |= ProcessPostTraversal(
+             n->AsElement(), childrenRestyleState, childrenFlags);
+       } else if (traverseTextChildren && n->IsText()) {
+         recreatedAnyContext |= ProcessPostTraversalForText(
+             n, textState, childrenRestyleState, childrenFlags);
+       }
++      n = nNext;
+     }
+   }
+ 
+   // We want to update frame pseudo-element styles after we've traversed our
+   // kids, because some of those updates (::first-line/::first-letter) need to
+   // modify the styles of the kids, and the child traversal above would just
+   // clobber those modifications.
+   if (styleFrame) {

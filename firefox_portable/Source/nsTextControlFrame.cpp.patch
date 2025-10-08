@@ -1,0 +1,50 @@
+diff --git a/layout/forms/nsTextControlFrame.cpp b/layout/forms/nsTextControlFrame.cpp
+--- a/layout/forms/nsTextControlFrame.cpp
++++ b/layout/forms/nsTextControlFrame.cpp
+@@ -1,14 +1,18 @@
+ /* -*- Mode: C++; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+ /* vim: set ts=8 sts=2 et sw=2 tw=80: */
+ /* This Source Code Form is subject to the terms of the Mozilla Public
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++#include <xmmintrin.h>
++#endif
++
+ #include "nsTextControlFrame.h"
+ 
+ #include <algorithm>
+ 
+ #include "gfxContext.h"
+ #include "mozilla/DebugOnly.h"
+ #include "mozilla/EventStateManager.h"
+ #include "mozilla/MathAlgorithms.h"
+@@ -1130,17 +1134,26 @@ void nsTextControlFrame::BuildDisplayLis
+   DisplayBorderBackgroundOutline(aBuilder, aLists);
+ 
+   // Redirect all lists to the Content list so that nothing can escape, ie
+   // opacity creating stacking contexts that then get sorted with stacking
+   // contexts external to us.
+   nsDisplayList* content = aLists.Content();
+   nsDisplayListSet set(content, content, content, content, content, content);
+ 
+-  for (auto* kid : mFrames) {
++  const auto& frames = mFrames;
++  for (auto it = frames.begin(); it != frames.end();) {
++    auto kid = *it;
++    ++it;
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++    if (it != frames.end()) {
++      _mm_prefetch((char *)*it, _MM_HINT_T0);
++      _mm_prefetch((char *)(*it) + 64, _MM_HINT_T0);
++    }
++#endif
+     BuildDisplayListForChild(aBuilder, kid, set);
+   }
+ }
+ 
+ NS_IMETHODIMP
+ nsTextControlFrame::EditorInitializer::Run() {
+   if (!mFrame) {
+     return NS_OK;

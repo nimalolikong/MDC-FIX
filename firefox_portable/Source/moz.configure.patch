@@ -1,0 +1,34 @@
+diff --git a/moz.configure b/moz.configure
+--- a/moz.configure
++++ b/moz.configure
+@@ -173,16 +173,30 @@ def debug_defines(debug, labels):
+ 
+ set_config("MOZ_DEBUG_DEFINES", debug_defines)
+ 
+ option(env="MOZ_PGO", help="Build with profile guided optimizations")
+ 
+ set_config("MOZ_PGO", depends("MOZ_PGO")(lambda x: bool(x)))
+ 
+ 
++option(env="PROFILE_GEN_SCRIPT", nargs=1, help="PGO profile generate script")
++set_config("PROFILE_GEN_SCRIPT", depends("PROFILE_GEN_SCRIPT")(lambda x: x))
++
++
++option(env="ENABLE_CSPGO", nargs=1, help="Enable CSPGO")
++@depends("ENABLE_CSPGO")
++def enable_cspgo(value):
++    if value:
++        return True
++
++set_config("ENABLE_CSPGO", enable_cspgo)
++set_define("ENABLE_CSPGO", enable_cspgo)
++
++
+ # Imply --enable-release when MOZILLA_OFFICIAL is set rather than adjusting the
+ # default so that we can't have both MOZILLA_OFFICIAL and --disable-release set.
+ imply_option("--enable-release", mozilla_official)
+ 
+ option(
+     "--enable-release",
+     default=milestone.is_release_or_beta | moz_automation,
+     help="{Build|Do not build} with more conservative, release "

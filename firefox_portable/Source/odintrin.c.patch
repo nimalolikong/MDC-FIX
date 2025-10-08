@@ -1,0 +1,22 @@
+diff --git a/third_party/aom/aom_dsp/odintrin.c b/third_party/aom/aom_dsp/odintrin.c
+--- a/third_party/aom/aom_dsp/odintrin.c
++++ b/third_party/aom/aom_dsp/odintrin.c
+@@ -20,17 +20,17 @@
+     title="{N}-bit Unsigned Division via {N}-bit Multiply-Add",
+     booktitle="Proc. of the 17th IEEE Symposium on Computer Arithmetic
+      (ARITH'05)",
+     pages="131--139",
+     address="Cape Cod, MA",
+     month=Jun,
+     year=2005
+   }*/
+-uint32_t OD_DIVU_SMALL_CONSTS[OD_DIVU_DMAX][2] = {
++const uint32_t OD_DIVU_SMALL_CONSTS[OD_DIVU_DMAX][2] = {
+   { 0xFFFFFFFF, 0xFFFFFFFF }, { 0xFFFFFFFF, 0xFFFFFFFF },
+   { 0xAAAAAAAB, 0 },          { 0xFFFFFFFF, 0xFFFFFFFF },
+   { 0xCCCCCCCD, 0 },          { 0xAAAAAAAB, 0 },
+   { 0x92492492, 0x92492492 }, { 0xFFFFFFFF, 0xFFFFFFFF },
+   { 0xE38E38E4, 0 },          { 0xCCCCCCCD, 0 },
+   { 0xBA2E8BA3, 0 },          { 0xAAAAAAAB, 0 },
+   { 0x9D89D89E, 0 },          { 0x92492492, 0x92492492 },
+   { 0x88888889, 0 },          { 0xFFFFFFFF, 0xFFFFFFFF },

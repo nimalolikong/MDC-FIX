@@ -1,0 +1,23 @@
+diff --git a/dom/svg/SVGFEBlendElement.h b/dom/svg/SVGFEBlendElement.h
+index d5532c6d8c..d008e63118 100644
+--- a/dom/svg/SVGFEBlendElement.h
++++ b/dom/svg/SVGFEBlendElement.h
+@@ -49,17 +49,17 @@
+   already_AddRefed<DOMSVGAnimatedEnumeration> Mode();
+ 
+  protected:
+   EnumAttributesInfo GetEnumInfo() override;
+   StringAttributesInfo GetStringInfo() override;
+ 
+   enum { MODE };
+   SVGAnimatedEnumeration mEnumAttributes[1];
+-  static SVGEnumMapping sModeMap[];
++  static const SVGEnumMapping sModeMap[];
+   static EnumInfo sEnumInfo[1];
+ 
+   enum { RESULT, IN1, IN2 };
+   SVGAnimatedString mStringAttributes[3];
+   static StringInfo sStringInfo[3];
+ };
+ 
+ }  // namespace mozilla::dom

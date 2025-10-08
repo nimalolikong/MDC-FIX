@@ -1,0 +1,232 @@
+diff --git a/gfx/2d/ConvolutionFilterSSE2.cpp b/gfx/2d/ConvolutionFilterSSE2.cpp
+--- a/gfx/2d/ConvolutionFilterSSE2.cpp
++++ b/gfx/2d/ConvolutionFilterSSE2.cpp
+@@ -114,16 +114,228 @@ void convolve_horizontally_sse2(const un
+     accum = _mm_packus_epi16(accum, zero);
+ 
+     // Store the pixel value of 32 bits.
+     *(reinterpret_cast<int*>(outRow)) = _mm_cvtsi128_si32(accum);
+     outRow += 4;
+   }
+ }
+ 
++#ifdef __clang__
++#pragma clang attribute push (__attribute__((target("ssse3"))), apply_to=function)
++#endif
++
++// Convolves horizontally along a single row. The row data is given in
++// |srcData| and continues for the numValues() of the filter.
++void convolve_horizontally_ssse3(const unsigned char* srcData,
++                                 const SkConvolutionFilter1D& filter,
++                                 unsigned char* outRow, bool /*hasAlpha*/) {
++  const __m128i mask_c01 = _mm_set_epi8(
++    3, 2, 1, 0,
++    3, 2, 1, 0,
++    3, 2, 1, 0,
++    3, 2, 1, 0);
++  const __m128i mask_c23 = _mm_set_epi8(
++    7, 6, 5, 4,
++    7, 6, 5, 4,
++    7, 6, 5, 4,
++    7, 6, 5, 4);
++  const __m128i mask_src01 = _mm_set_epi8(
++    0x80, 7, 0x80, 3,
++    0x80, 6, 0x80, 2,
++    0x80, 5, 0x80, 1,
++    0x80, 4, 0x80, 0);
++  const __m128i mask_src23 = _mm_set_epi8(
++    0x80, 15, 0x80, 11,
++    0x80, 14, 0x80, 10,
++    0x80, 13, 0x80, 9,
++    0x80, 12, 0x80, 8);
++
++  // Output one pixel each iteration, calculating all channels (RGBA) together.
++  int numValues = filter.numValues();
++  for (int outX = 0; outX < numValues; outX++) {
++    // Get the filter that determines the current output pixel.
++    int filterOffset, filterLength;
++    const SkConvolutionFilter1D::ConvolutionFixed* filterValues =
++        filter.FilterForValue(outX, &filterOffset, &filterLength);
++
++    // Compute the first pixel in this row that the filter affects. It will
++    // touch |filterLength| pixels (4 bytes each) after this.
++    const unsigned char* rowToFilter = &srcData[filterOffset * 4];
++
++    __m128i zero = _mm_setzero_si128();
++    __m128i accum = _mm_setzero_si128();
++
++    // We will load and accumulate with four coefficients per iteration.
++    for (int filterX = 0; filterX < filterLength >> 2; filterX++) {
++      // Load 4 coefficients => duplicate 1st and 2nd of them for all channels.
++      // [16] xx xx xx xx c3 c2 c1 c0
++      __m128i coeff = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(filterValues));
++      // [16] c1 c0 c1 c0 c1 c0 c1 c0
++      __m128i coeff_c01 = _mm_shuffle_epi8(coeff, mask_c01);
++      // [16] c3 c2 c3 c2 c3 c2 c3 c2
++      __m128i coeff_c23 = _mm_shuffle_epi8(coeff, mask_c23);
++
++      // [8] a3 b3 g3 r3 a2 b2 g2 r2 a1 b1 g1 r1 a0 b0 g0 r0
++      __m128i src8 = _mm_lddqu_si128(reinterpret_cast<const __m128i*>(rowToFilter));
++      // [16] a1 a0 b1 b0 g1 g0 r1 r0
++      __m128i src_01 = _mm_shuffle_epi8(src8, mask_src01);
++      // [16] a3 a2 b3 b2 g3 g2 r3 r2
++      __m128i src_23 = _mm_shuffle_epi8(src8, mask_src23);
++
++      // [32] a0*c0+a1*c1 b0*c0+b1*c1 g0*c0+g1*c1 r0*c0+r1*c1
++      __m128i t0 = _mm_madd_epi16(src_01, coeff_c01);
++      accum = _mm_add_epi32(accum, t0);
++      // [32] a2*c2+a3*c3 b2*c2+b3*c3 g2*c2+g3*c3 r2*c2+r3*c3
++      __m128i t1 = _mm_madd_epi16(src_23, coeff_c23);
++      accum = _mm_add_epi32(accum, t1);
++
++      // Advance the pixel and coefficients pointers.
++      rowToFilter += 16;
++      filterValues += 4;
++    }
++
++    // When |filterLength| is not divisible by 4, we accumulate the last 1 - 3
++    // coefficients one at a time.
++    int r = filterLength & 3;
++    if (r) {
++      int remainderOffset = (filterOffset + filterLength - r) * 4;
++      AccumRemainder(srcData + remainderOffset, filterValues, accum, r);
++    }
++
++    // Shift right for fixed point implementation.
++    accum = _mm_srai_epi32(accum, SkConvolutionFilter1D::kShiftBits);
++
++    // Packing 32 bits |accum| to 16 bits per channel (signed saturation).
++    accum = _mm_packs_epi32(accum, zero);
++    // Packing 16 bits |accum| to 8 bits per channel (unsigned saturation).
++    accum = _mm_packus_epi16(accum, zero);
++
++    // Store the pixel value of 32 bits.
++    *(reinterpret_cast<int*>(outRow)) = _mm_cvtsi128_si32(accum);
++    outRow += 4;
++  }
++}
++
++#ifdef __clang__
++#pragma clang attribute pop
++
++#pragma clang attribute push (__attribute__((target("avx2"))), apply_to=function)
++#endif
++
++// Convolves horizontally along a single row. The row data is given in
++// |srcData| and continues for the numValues() of the filter.
++void convolve_horizontally_avx2(const unsigned char* srcData,
++                                const SkConvolutionFilter1D& filter,
++                                unsigned char* outRow, bool /*hasAlpha*/) {
++  const __m128i mask_c01_128 = _mm_set_epi8(
++    3, 2, 1, 0,
++    3, 2, 1, 0,
++    3, 2, 1, 0,
++    3, 2, 1, 0);
++  const __m128i mask_c23_128 = _mm_set_epi8(
++    7, 6, 5, 4,
++    7, 6, 5, 4,
++    7, 6, 5, 4,
++    7, 6, 5, 4);
++  const __m128i mask_src01_128 = _mm_set_epi8(
++    0x80, 7, 0x80, 3,
++    0x80, 6, 0x80, 2,
++    0x80, 5, 0x80, 1,
++    0x80, 4, 0x80, 0);
++  const __m128i mask_src23_128 = _mm_set_epi8(
++    0x80, 15, 0x80, 11,
++    0x80, 14, 0x80, 10,
++    0x80, 13, 0x80, 9,
++    0x80, 12, 0x80, 8);
++
++  const __m256i mask_c01 = _mm256_broadcastsi128_si256(mask_c01_128);
++  const __m256i mask_c23 = _mm256_broadcastsi128_si256(mask_c23_128);
++  const __m256i mask_src01 = _mm256_broadcastsi128_si256(mask_src01_128);
++  const __m256i mask_src23 = _mm256_broadcastsi128_si256(mask_src23_128);
++
++  int numValues = filter.numValues();
++  for (int outX = 0; outX < numValues; ++outX) {
++    int filterOffset, filterLength;
++    const SkConvolutionFilter1D::ConvolutionFixed* filterValues =
++        filter.FilterForValue(outX, &filterOffset, &filterLength);
++
++    const unsigned char* rowToFilter = &srcData[filterOffset * 4];
++
++    __m256i accum_avx = _mm256_setzero_si256();
++
++    int groups8 = filterLength >> 3;
++    for (int g = 0; g < groups8; ++g) {
++      __m128i coeff128 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(filterValues));
++      __m128i coeff_high128 = _mm_srli_si128(coeff128, 8);
++      __m256i coeff256 = _mm256_castsi128_si256(coeff128);
++      coeff256 = _mm256_inserti128_si256(coeff256, coeff_high128, 1);
++
++      __m256i coeff_shuf0 = _mm256_shuffle_epi8(coeff256, mask_c01);
++      __m256i coeff_shuf1 = _mm256_shuffle_epi8(coeff256, mask_c23);
++
++      __m256i src256 = _mm256_lddqu_si256(reinterpret_cast<const __m256i*>(rowToFilter));
++
++      __m256i src_shuf0 = _mm256_shuffle_epi8(src256, mask_src01);
++      __m256i src_shuf1 = _mm256_shuffle_epi8(src256, mask_src23);
++
++      __m256i t0 = _mm256_madd_epi16(src_shuf0, coeff_shuf0);
++      __m256i t1 = _mm256_madd_epi16(src_shuf1, coeff_shuf1);
++
++      accum_avx = _mm256_add_epi32(accum_avx, _mm256_add_epi32(t0, t1));
++
++      rowToFilter += 32;
++      filterValues += 8;
++    }
++
++    __m128i accum_lo = _mm256_castsi256_si128(accum_avx);
++    __m128i accum_hi = _mm256_extracti128_si256(accum_avx, 1);
++    __m128i accum = _mm_add_epi32(accum_lo, accum_hi);
++
++    if (filterLength & 4) {
++      __m128i coeff = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(filterValues));
++      __m128i coeff_c01 = _mm_shuffle_epi8(coeff, mask_c01_128);
++      __m128i coeff_c23 = _mm_shuffle_epi8(coeff, mask_c23_128);
++
++      __m128i src8 = _mm_lddqu_si128(
++          reinterpret_cast<const __m128i*>(rowToFilter));
++      __m128i src_01 = _mm_shuffle_epi8(src8, mask_src01_128);
++      __m128i src_23 = _mm_shuffle_epi8(src8, mask_src23_128);
++
++      __m128i t0 = _mm_madd_epi16(src_01, coeff_c01);
++      __m128i t1 = _mm_madd_epi16(src_23, coeff_c23);
++      accum = _mm_add_epi32(accum, t0);
++      accum = _mm_add_epi32(accum, t1);
++
++      rowToFilter += 16;
++      filterValues += 4;
++    }
++
++    int r = filterLength & 3;
++    if (r) {
++      int remainderOffset = (filterOffset + filterLength - r) * 4;
++      AccumRemainder(srcData + remainderOffset, filterValues, accum, r);
++    }
++
++    __m128i zero = _mm_setzero_si128();
++    accum = _mm_srai_epi32(accum, SkConvolutionFilter1D::kShiftBits);
++    accum = _mm_packs_epi32(accum, zero);
++    accum = _mm_packus_epi16(accum, zero);
++
++    *(reinterpret_cast<int*>(outRow)) = _mm_cvtsi128_si32(accum);
++    outRow += 4;
++  }
++
++  _mm256_zeroupper();
++}
++
++#ifdef __clang__
++#pragma clang attribute pop
++#endif
++
+ // Does vertical convolution to produce one output row. The filter values and
+ // length are given in the first two parameters. These are applied to each
+ // of the rows pointed to in the |sourceDataRows| array, with each row
+ // being |pixelWidth| wide.
+ //
+ // The output must have room for |pixelWidth * 4| bytes.
+ template <bool hasAlpha>
+ static void ConvolveVertically(

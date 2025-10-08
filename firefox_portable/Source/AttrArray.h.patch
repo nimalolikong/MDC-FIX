@@ -1,0 +1,47 @@
+diff --git a/dom/base/AttrArray.h b/dom/base/AttrArray.h
+--- a/dom/base/AttrArray.h
++++ b/dom/base/AttrArray.h
+@@ -6,16 +6,20 @@
+ 
+ /*
+  * Storage of the attributes of a DOM node.
+  */
+ 
+ #ifndef AttrArray_h___
+ #define AttrArray_h___
+ 
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++#include <xmmintrin.h>
++#endif
++
+ #include "mozilla/Attributes.h"
+ #include "mozilla/MemoryReporting.h"
+ #include "mozilla/BindgenUniquePtr.h"
+ #include "mozilla/Span.h"
+ #include "mozilla/dom/BorrowedAttrInfo.h"
+ 
+ #include "nscore.h"
+ #include "nsAttrName.h"
+@@ -187,16 +191,22 @@ class AttrArray {
+   AttrArray(const AttrArray& aOther) = delete;
+   AttrArray& operator=(const AttrArray& aOther) = delete;
+ 
+   bool GrowBy(uint32_t aGrowSize);
+   bool GrowTo(uint32_t aCapacity);
+ 
+   void Clear() { mImpl.reset(); }
+ 
++  void PrefetchImpl() {
++#if (_M_IX86_FP >= 1) || defined(__SSE__) || defined(_M_AMD64) || defined(__amd64__)
++    _mm_prefetch((char *)&mImpl, _MM_HINT_NTA);
++#endif
++  }
++
+  private:
+   // Tries to create an attribute, growing the buffer if needed, with the given
+   // name and value.
+   //
+   // The value is moved from the argument.
+   //
+   // `Name` can be anything you construct a `nsAttrName` with (either an atom or
+   // a NodeInfo pointer).

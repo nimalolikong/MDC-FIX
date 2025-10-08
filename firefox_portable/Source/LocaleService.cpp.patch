@@ -1,0 +1,26 @@
+diff --git a/intl/locale/LocaleService.cpp b/intl/locale/LocaleService.cpp
+--- a/intl/locale/LocaleService.cpp
++++ b/intl/locale/LocaleService.cpp
+@@ -30,19 +30,19 @@
+ #endif
+ 
+ #define INTL_SYSTEM_LOCALES_CHANGED "intl:system-locales-changed"
+ 
+ #define PSEUDO_LOCALE_PREF "intl.l10n.pseudo"
+ #define REQUESTED_LOCALES_PREF "intl.locale.requested"
+ #define WEB_EXPOSED_LOCALES_PREF "intl.locale.privacy.web_exposed"
+ 
+-static const char* kObservedPrefs[] = {REQUESTED_LOCALES_PREF,
+-                                       WEB_EXPOSED_LOCALES_PREF,
+-                                       PSEUDO_LOCALE_PREF, nullptr};
++constexpr const char* kObservedPrefs[] = {REQUESTED_LOCALES_PREF,
++                                          WEB_EXPOSED_LOCALES_PREF,
++                                          PSEUDO_LOCALE_PREF, nullptr};
+ 
+ using namespace mozilla::intl::ffi;
+ using namespace mozilla::intl;
+ using namespace mozilla;
+ 
+ NS_IMPL_ISUPPORTS(LocaleService, mozILocaleService, nsIObserver,
+                   nsISupportsWeakReference)
+ 
