@@ -171,6 +171,7 @@ def get_data_from_json(
     # ====================处理异常字符====================== #\/:*?"<>|
     actor = special_characters_replacement(actor)
     actor_list = [special_characters_replacement(a) for a in actor_list]
+    actor_list.extend([alias for name in actor_list for alias in re.findall(r'[(\uff08](.*?)[)\uff09]', name)]) # 添加由中英文括号包裹起来的别名
     title = special_characters_replacement(title)
     label = special_characters_replacement(label)
     outline = special_characters_replacement(outline)
