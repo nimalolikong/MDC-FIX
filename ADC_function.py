@@ -56,7 +56,11 @@ def get_html(url, cookies: dict = None, ua: str = None, return_type: str = None,
             if return_type == "object":
                 return result
             elif return_type == "content":
-                return result.content
+                if result.headers.get('Content-Length') != result.content.__len__().__str__():
+                    print("[-]Warning: Content-Length mismatch!")
+                    continue
+                else:
+                    return result.content
             else:
                 result.encoding = encoding or result.apparent_encoding
                 return result.text
@@ -72,6 +76,30 @@ def get_html(url, cookies: dict = None, ua: str = None, return_type: str = None,
         print("[-]" + errors)
         print('[-]Connect Failed! Please check your Proxy or Network!')
     raise Exception('Connect Failed')
+
+def get_html_status(url, cookies: dict = None, ua: str = None, return_type: str = None, encoding: str = None, json_headers=None):
+    """
+    网页请求状态码检查
+    """
+    verify = config.getInstance().cacert_file()
+    config_proxy = config.getInstance().proxy()
+
+    headers = {"User-Agent": ua or G_USER_AGENT}  # noqa
+    if json_headers is not None:
+        headers.update(json_headers)
+    
+    try:
+        if config_proxy.enable:
+            proxies = config_proxy.proxies()
+            result = requests.head(str(url), headers=headers, timeout=config_proxy.timeout, proxies=proxies,
+                                    verify=False,
+                                    cookies=cookies)
+        else:
+            result = requests.head(str(url), headers=headers, timeout=config_proxy.timeout, cookies=cookies)
+        return result.status_code == 200 and 'image' in result.headers.get('Content-Type','').lower()
+    except Exception as e:
+        print(f'[-]Connect to {str(url)}  Failed! Please check your Proxy or Network!')
+        return False
 
 
 def post_html(url: str, query: dict, headers: dict = None) -> requests.Response:

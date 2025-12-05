@@ -1157,35 +1157,16 @@ def getTrueNum(number):
 def getFC2Number(number):
     fc2_num = number.replace('+', ' ')
     return fc2_num
-def findPreviewImagesFromBlogJAV(number):
-    true_num = getTrueNum(number)
-    bid = getBlogJAVSearchVal(true_num)
-    fc2_num = getFC2Number(bid) 
-    
-    url= 'https://blogJAV.net/?s='+bid
-    bJAV_search_html = get_html(url,return_type='object')
-    if bJAV_search_html.status_code != 200:
-        print("[!]blogjav页面错误")
-        return None
-    data = etree.HTML(bJAV_search_html.text)
-    dlist = data.findall('.//*[@class="entry-title"]')
-    p_url = ""
-    
-
-    for b in dlist:
-        nb = etree.tostring(b).decode()
-        if true_num in nb or fc2_num in nb:
-            tmp_url = b.xpath('./a/@href')[0]
-            if p_url == "":
-               p_url = tmp_url
-            if 'FHD' in nb:
-               p_url = tmp_url
-    if p_url != "":
-        print('[+]blogjav查找到链接！' ) 
+def findPreviewImagesFromMemoJav(number):
+    '''
+    处理-cd后缀 使用memojav替换blogjav元
+    '''
+    num = getTrueNum(number)
+    url = f'https://image.memojav.com/image/screenshot/{num}.jpg'
+    if get_html_status(url):
+        return url
     else:
-        print('[!]blogjav没有查找到链接！请检查！')  
-    return p_url
-    
+        return ""
     
 
 def findPreviewImagesFromJAVStore(number):
@@ -1193,58 +1174,10 @@ def findPreviewImagesFromJAVStore(number):
     处理-cd后缀 待增加memojav替换blogjav
     '''
     num = getTrueNum(number)
-    url = f'https://javstore.net/search/{num}.html'
-    p_html = get_html(url,return_type="object")
-    if p_html.status_code != 200:
-        print("[!]加载javstore搜索页面出错")
-        return ""
-    data = etree.HTML(p_html.text)
-    node = data.xpath('/html/body/div[1]/div[2]/div[1]/div[3]/div')
-    if len(node) == 0:
-        print('[!]未在JAVstore查找到番号相关信息！')
-        return ""
-    dlist = node[0].xpath('.//h3/span')
-    if len(dlist) == 0:
-        print("[!]未找到JAVstore预览图！")
-        return ""
-    p_url = ""
-    cnt = 0
-    for ele in dlist:
-        cnt += 1
-        tmp = etree.tostring(ele).decode()
-        if num in tmp:
-            if p_url == "":
-                p_url = ele.xpath('./a/@href')[0]
-            if 'FHD' in tmp or 'Mosaic' in tmp or 'mosaic' in tmp:
-                p_url = ele.xpath('./a/@href')[0]
-        else:
-            break
-        if cnt == 3:
-            break
-    return p_url
-
-def getPreviewImageUrlFromBlogJAV(url):
-    """
-    blogjav图床抽风使用cloudflare，且不再有缩略图，弃用
-    """
-    return ""
-    p_html = get_html(url,json_headers= pic_headers, return_type="object")
-    if p_html.status_code != 200:
-       print("[!]无法加载blogJAV页面")
-       return ""
-
-    data = etree.HTML(p_html.text)
-    image_list = data.xpath('/html/body/div[1]/div/div[1]/main/article/div/div/p[1]/a/img/@data-lazy-src')
-    url_list = []
-    if len(image_list) ==0:
-        print("[!]未找到blogjav对应位置缩略图，请查看代码")
-        return url_list
-    if len(image_list) > 1:
-        print('[!]获得预览图大于一!')
+    url = f'https://img.javstore.net/search/images/?q="{num}"'
     
-    for url in image_list:
-        url_list.append(url.replace('thumbs', 'images').replace('/t', '/img'))
-    return url_list
+    return url
+
 
 def getPreviewImageUrlFromJAVStore(url):
     i_html = get_html(url,json_headers= pic_headers, return_type="object")
@@ -1252,66 +1185,50 @@ def getPreviewImageUrlFromJAVStore(url):
         print("[!]无法加载javstore页面")
     
     data = etree.HTML(i_html.text)
-    url_list = data.xpath('/html/body/div[1]/div[2]/div[1]/div[2]/div[2]/a[1]/img/@src')
+    url_list = data.xpath('//a[@class="image-container"]/img/@src')
     if len(url_list) ==0 :
-        url_list = data.xpath('/html/body/div[1]/div[2]/div[1]/div[2]/div[2]/a[1]/@href')
-        if len(url_list)== 0:
-            print("[!]未找到JAVStore图片!")
-            return []
+        print("[!]未找到JAVStore图片!")
+        return []
     rep_list = []
     for url in url_list:
-        url = url.replace('.th', '')
+        url = url.replace('.th', '').replace('.md', '')
         print(url)
         rep_list.append(url)
-    return rep_list[:1]
+    
+    """优先返回列表最后一个"""
+    return rep_list[-1:]
 
-def imageUrlFromBlogJAV(number):
-    # blogjav 疑似不再提供缩略图，弃用
-    return ""
-    blog_page_url = findPreviewImagesFromBlogJAV(number)
+def imageUrlFromMemoJav(number):
+    # 使用MemoJav 作为缩略图源第一优先级
     preview_url_1 = []
-    if blog_page_url != "":
-      preview_url_1 = getPreviewImageUrlFromBlogJAV(blog_page_url)
+    preview_url_mem_jav = findPreviewImagesFromMemoJav(number)
+    if preview_url_mem_jav != "":
+        print("[+]Get Preview Image Url! url is " +preview_url_mem_jav)
+        preview_url_1.append(preview_url_mem_jav)
     return preview_url_1
+
 def imageUrlFromJAVStore(number):
     javstore_page_url = findPreviewImagesFromJAVStore(number)
     preview_url_2 = []
     if javstore_page_url != "":
       preview_url_2 = getPreviewImageUrlFromJAVStore(javstore_page_url)
     return preview_url_2
-""" 
-def multiThreadToGetUrl(number):
-    with ThreadPoolExecutor(max_workers=2) as t:
-        print("[+]开始获取Preview Image Url...")
-        obj_list = []
-        obj1 = t.submit(imageUrlFromBlogJAV, number)
-        obj_list.append(obj1)
-        obj2 = t.submit(imageUrlFromJAVStore, number)
-        obj_list.append(obj2)
-        rep_list = []
-        for future in as_completed(obj_list):
-            url_list = future.result()
-            if len(url_list) != 0:
-                for url in url_list:
-                    rep_list.append(url)
-        for url in rep_list:
-            print("[+]Get Preview Image Url! url is " +url)
-        return rep_list """
+
 def getPreImgByOrder(number):
-    print("[+]开始从BlogJAV获取PreImg Url...")
+    print("[+]开始从MemoJav获取PreImg Url...")
     
    # print("[!]blogjav图床出问题了，暂时只使用javstore,默认blogjav搜索失败！记得检查")
-    preimgList = imageUrlFromBlogJAV(number)
+    preimgList = imageUrlFromMemoJav(number)
     
     if len(preimgList) == 0:
-        print("[+]未能从BlogJAV获取PreImg Url，开始从JAVStore获取PreImg Url...")
+        print("[+]未能从MemoJav获取PreImg Url，开始从JAVStore获取PreImg Url...")
         preimgList = imageUrlFromJAVStore(number)
         if len(preimgList) == 0:
             print("[+]未能从JAVStore获取PreImg Url,直接返回")
         else:
             print("[+]成功获取JAVStore的预览大图! 已添加到extrafanart下载列表")
     else:
-        print("[+]成功获取BlogJav的预览大图! 已添加到extrafanart下载列表")
+        print("[+]成功获取MemoJav的预览大图! 已添加到extrafanart下载列表")
     return preimgList
         
 
