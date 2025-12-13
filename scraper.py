@@ -127,7 +127,9 @@ def get_data_from_json(
     title = json_data.get('title')
     actor_list = str(json_data.get('actor')).strip("[ ]").replace("'", '').split(',')  # 字符串转列表
     actor_list = [actor.strip() for actor in actor_list]  # 去除空白
-    director = json_data.get('director')
+    # 处理多导演
+    director = str(json_data.get('director')).strip("[ ]").replace('xa0', '').replace("'", '').replace('\\', '').split(',')  # 字符串转列表
+    director = [d for d in (d.strip() for d in director) if d]  # 使用生成器表达式避免重复strip
     release = json_data.get('release')
     number = json_data.get('number')
     studio = json_data.get('studio')
@@ -177,7 +179,7 @@ def get_data_from_json(
     outline = special_characters_replacement(outline)
     series = special_characters_replacement(series)
     studio = special_characters_replacement(studio)
-    director = special_characters_replacement(director)
+    director = [special_characters_replacement(d) for d in director]
     tag = [special_characters_replacement(t) for t in tag]
     release = release.replace('/', '-')
     tmpArr = cover_small.split(',')

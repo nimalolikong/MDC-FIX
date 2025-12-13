@@ -112,11 +112,9 @@ class Fanza(Parser):
         '''
         
         url = "https://www.dmm.co.jp/age_check/=/declared=yes/?"+ urlencode({"rurl": self.detailurl})
-        self.htmlcode = self.getHtml(url)
+        self.htmlcode = self.getTrueHtmlFromFanza(url)
         if self.htmlcode != 404 \
                 and 'Sorry! This content is not available in your region.' not in self.htmlcode:
-            if 'fn-popup' in self.htmlcode or 'PopupBanner'in self.htmlcode:
-                self.htmlcode = self.getTrueHtmlFromFanza(url)
             self.htmltree = etree.HTML(self.htmlcode)
             if self.htmltree is not None:
                result = self.dictformat(self.htmltree)
@@ -247,12 +245,55 @@ class Fanza(Parser):
         driver.get(url)
 
         # 尝试关闭弹窗
-        close_btn = driver.find_element(By.XPATH,'//p[contains(@class,"btn-close")]')
-        if close_btn == None:
-            close_btn = driver.find_element(By.XPATH,'//a[contains(@class,"campaignPopupBanner__closeButton")]')
-        close_btn.click()
-        # 等待页面加载完成
-        driver.implicitly_wait(1)
+        try:
+            close_btn = driver.find_element(By.XPATH,'//p[contains(@class,"btn-close")]')
+            if close_btn == None:
+                close_btn = driver.find_element(By.XPATH,'//a[contains(@class,"campaignPopupBanner__closeButton")]')
+            if close_btn != None:
+                print('[+]检测到促销弹窗，点击后获取网页源代码...')
+                orig = driver.execute_script("return document.documentElement.outerHTML;")
+                close_btn.click()
+                def popup_html_changed(drv):
+                    try:
+                        cur = drv.execute_script("return document.documentElement.outerHTML;")
+                        if cur != orig and len(cur) > len(orig):  # 也可以去掉 len 比较，仅使用 cur != orig
+                            print('[+]促销弹窗关闭成功，网页源代码已更新')
+                            return True
+                        else:
+                            print('[+]促销弹窗关闭中，等待网页源代码更新...')
+                            return False
+                    except Exception:
+                        return False
+                WebDriverWait(driver, 10).until(popup_html_changed)
+            else:
+                print('[+]未检测到促销弹窗，直接获取网页源代码...')
+        except:
+            print('[+]未检测到弹窗，直接获取网页源代码...')
+
+        try:
+            multi_actor = driver.find_element(By.XPATH,"//a[@id='a_performer']")
+            if multi_actor != None:
+                print('[+]检测到存在多演员省略，尝试点击后更新演员列表...')
+                # 等待 innerHTML 变化（或长度显著增加）
+                orig = driver.execute_script("return document.querySelector('span#performer').innerHTML;")
+                multi_actor.click()
+                def performer_changed(drv):
+                    try:
+                        cur = drv.execute_script("return document.querySelector('span#performer').innerHTML;")
+                        return cur != orig and len(cur) > len(orig)  # 也可以去掉 len 比较，仅使用 cur != orig
+                    except Exception:
+                        return False
+
+                WebDriverWait(driver, 10).until(performer_changed)
+                try:
+                    multi_actor = driver.find_element(By.XPATH,"//a[@id='a_performer']")
+                    print('[+]仍检测到多演员省略，可能演员列表未更新完成...')
+                except:
+                    print('[+]演员列表已更新')
+            else:
+                print('[+]未检测到多演员省略，直接获取网页源代码...')
+        except:
+            print('[+]未检测到多演员省略，直接获取网页源代码...')
         
 
         ans = driver.page_source

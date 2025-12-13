@@ -59,7 +59,6 @@ def get_info(json_data):  # 返回json里的数据
     year = json_data.get('year')
     outline = json_data.get('outline')
     runtime = json_data.get('runtime')
-    director = json_data.get('director')
     actor_photo = json_data.get('actor_photo', {})
     release = json_data.get('release')
     number = json_data.get('number')
@@ -70,7 +69,7 @@ def get_info(json_data):  # 返回json里的数据
     label = json_data.get('label', "")
     animeflag = json_data.get('animeflag',False)
     animenumber = json_data.get('animenumber',"")
-    return title, studio, year, outline, runtime, director, actor_photo, release, number, cover, trailer, website, series, label,animeflag,animenumber
+    return title, studio, year, outline, runtime, actor_photo, release, number, cover, trailer, website, series, label,animeflag,animenumber
 
 
 def small_cover_check(path, filename, cover_small, movie_path, json_headers=None):
@@ -85,7 +84,7 @@ def small_cover_check(path, filename, cover_small, movie_path, json_headers=None
 
 
 def create_folder(json_data):  # 创建文件夹
-    title, studio, year, outline, runtime, director, actor_photo, release, number, cover, trailer, website, series, label,animeflag, animenumber = get_info(
+    title, studio, year, outline, runtime, actor_photo, release, number, cover, trailer, website, series, label,animeflag, animenumber = get_info(
         json_data)
     '''
     添加对动画路径保存选择
@@ -343,10 +342,10 @@ def image_download(cover, fanart_path, thumb_path, path, filepath, json_headers=
         shutil.copyfile(full_filepath, os.path.join(path, fanart_path))
 
 
-def print_files(path, leak_word, c_word, naming_rule, anime_naming_rule, part, cn_sub, json_data, filepath, tag, actor_list, liuchu,
+def print_files(path, leak_word, c_word, naming_rule, anime_naming_rule, part, cn_sub, json_data, filepath, tag, actor_list, director, liuchu,
                 uncensored, hack, hack_word, _4k, fanart_path, poster_path, thumb_path, iso):
     
-    title, studio, year, outline, runtime, director, actor_photo, release, number, cover, trailer, website, series, label,animeflag, animenumber = get_info(
+    title, studio, year, outline, runtime, actor_photo, release, number, cover, trailer, website, series, label,animeflag, animenumber = get_info(
         json_data)
     if config.getInstance().main_mode() == 3:  # 模式3下，由于视频文件不做任何改变，.nfo文件必须和视频文件名称除后缀外完全一致，KODI等软件方可支持
         nfo_path = str(Path(filepath).with_suffix('.nfo'))
@@ -427,7 +426,8 @@ def print_files(path, leak_word, c_word, naming_rule, anime_naming_rule, part, c
                     print("  <outline>"+ number +" "+ outline + "</outline>", file=code)
                     print("  <plot>" +number+" "+ outline + "</plot>", file=code)
             print("  <runtime>" + str(runtime).replace(" ", "") + "</runtime>", file=code)
-            print("  <director>" + director + "</director>", file=code)
+            for d in director: # 多导演适配
+                print("  <director>" + str(d) + "</director>", file=code)
             print("  <poster>" + poster_path + "</poster>", file=code)
             print("  <thumb>" + thumb_path + "</thumb>", file=code)
             if not config.getInstance().jellyfin():  # jellyfin 不需要保存fanart
@@ -1066,7 +1066,7 @@ def core_main(movie_path, number_th, oCC, specified_source=None, specified_url=N
         
 
         print_files(path, leak_word, c_word, json_data.get('naming_rule'),json_data.get('anime_naming_rule'), part, cn_sub, json_data, movie_path, tag,
-                    json_data.get('actor_list'), liuchu, uncensored, hack, hack_word
+                    json_data.get('actor_list'), json_data.get('director'), liuchu, uncensored, hack, hack_word
                     , _4k, fanart_path, poster_path, thumb_path, iso)
 
     elif conf.main_mode() == 2:
@@ -1129,7 +1129,7 @@ def core_main(movie_path, number_th, oCC, specified_source=None, specified_url=N
 
         # 最后输出.nfo元数据文件，以完成.nfo文件创建作为任务成功标志
         print_files(path, leak_word, c_word, json_data.get('naming_rule'),json_data.get('anime_naming_rule'), part, cn_sub, json_data, movie_path,
-                    tag, json_data.get('actor_list'), liuchu, uncensored, hack, hack_word, _4k, fanart_path,
+                    tag, json_data.get('actor_list'), json_data.get('actor_list'), liuchu, uncensored, hack, hack_word, _4k, fanart_path,
                     poster_path,
                     thumb_path, iso)
 
