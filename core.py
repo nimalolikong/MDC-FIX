@@ -1195,8 +1195,60 @@ def getPreviewImageUrlFromJAVStore(url):
         print(url)
         rep_list.append(url)
     
-    """优先返回列表最后一个"""
+    #直接获取则返回最靠后的结果（最原始）
     return rep_list[-1:]
+
+def findDetailURLFromJAVStore(number):
+    num = getTrueNum(number)
+    url = f'https://javstore.net/search/{num}.html'
+    p_html = get_html(url,return_type="object")
+    if p_html.status_code != 200:
+        print("[!]加载javstore搜索页面出错")
+        return ""
+    data = etree.HTML(p_html.text)
+    node = data.xpath('/html/body/div[1]/div[2]/div[1]/div[3]/div')
+    if len(node) == 0:
+        print('[!]未在JAVstore查找到番号相关信息！')
+        return ""
+    dlist = node[0].xpath('.//h3/span')
+    if len(dlist) == 0:
+        print("[!]未找到JAVstore预览图！")
+        return ""
+    p_url = ""
+    cnt = 0
+    for ele in dlist:
+        cnt += 1
+        tmp = etree.tostring(ele).decode()
+        if num in tmp:
+            if p_url == "":
+                p_url = ele.xpath('./a/@href')[0]
+            if 'FHD' in tmp or 'Mosaic' in tmp or 'mosaic' in tmp:
+                p_url = ele.xpath('./a/@href')[0]
+        else:
+            break
+        if cnt == 3:
+            break
+    return p_url
+
+def getPreviewImageUrlFromJAVStoreDetailURL(url):
+    i_html = get_html(url,json_headers= pic_headers, return_type="object")
+    if i_html.status_code != 200:
+        print("[!]无法加载javstore页面")
+    
+    data = etree.HTML(i_html.text)
+    url_list = data.xpath('/html/body/div[1]/div[2]/div[1]/div[2]/div[2]/a[1]/img/@src')
+    if len(url_list) ==0 :
+        url_list = data.xpath('/html/body/div[1]/div[2]/div[1]/div[2]/div[2]/a[1]/@href')
+        if len(url_list)== 0:
+            print("[!]未找到JAVStore图片!")
+            return []
+    rep_list = []
+    for url in url_list:
+        url = url.replace('.th', '').replace('.md', '')
+        print(url)
+        rep_list.append(url)
+    #详情页缩略图用最前面的
+    return rep_list[:1] 
 
 def imageUrlFromMemoJav(number):
     # 使用MemoJav 作为缩略图源第一优先级
@@ -1208,16 +1260,21 @@ def imageUrlFromMemoJav(number):
     return preview_url_1
 
 def imageUrlFromJAVStore(number):
-    javstore_page_url = findPreviewImagesFromJAVStore(number)
-    preview_url_2 = []
-    if javstore_page_url != "":
-      preview_url_2 = getPreviewImageUrlFromJAVStore(javstore_page_url)
-    return preview_url_2
+    javstore_direct_image_url = findPreviewImagesFromJAVStore(number)
+    javstore_preview_url = []
+    if javstore_direct_image_url != "":
+      javstore_preview_url = getPreviewImageUrlFromJAVStore(javstore_direct_image_url)
+
+    if len(javstore_preview_url) == 0:
+        print("[!]未能通过直接查找法找到JAVStore图片，开始尝试搜索详细页面!")
+        javstore_detail_info_page_url = findDetailURLFromJAVStore(number)
+        if javstore_detail_info_page_url != "":
+            javstore_preview_url = getPreviewImageUrlFromJAVStoreDetailURL(javstore_detail_info_page_url)
+    return javstore_preview_url
 
 def getPreImgByOrder(number):
     print("[+]开始从MemoJav获取PreImg Url...")
     
-   # print("[!]blogjav图床出问题了，暂时只使用javstore,默认blogjav搜索失败！记得检查")
     preimgList = imageUrlFromMemoJav(number)
     
     if len(preimgList) == 0:
