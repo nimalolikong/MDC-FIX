@@ -33,8 +33,14 @@ def _default_paths():
     sys = platform.system().lower()
     if sys.startswith('win'):
         # Windows 示例（portable）
-        return r"firefox_portable\firefox.exe", r"geckodriver.exe"
-    return "/usr/bin/firefox","/usr/bin/geckodriver"
+        project_dir = os.path.dirname(os.path.abspath(__file__))
+        firefox_path = project_dir + r"\..\firefox_portable\firefox.exe"
+        geckodriver_path = project_dir + r"\..\geckodriver.exe"
+    else:
+        # Linux 示例（Docker 容器）
+        firefox_path = "/usr/bin/firefox"
+        geckodriver_path = "/usr/bin/geckodriver"
+    return firefox_path, geckodriver_path
 
 def _get_firefox_webdriver():
     """获取 Firefox webdriver，根据操作系统选择合适的二进制文件和驱动"""
