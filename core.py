@@ -1197,6 +1197,37 @@ def getPreviewImageUrlFromJAVStore(url):
     
     #直接获取则返回最靠后的结果（最原始）
     return rep_list[-1:]
+def findNewDetailURLListFromJAVStore(number):
+    num = getTrueNum(number)
+    url_pre = "https://javstore.net/"
+    search_url = f'https://javstore.net/search?q={num}.html'
+    p_html = get_html(search_url,return_type="object")
+    if p_html.status_code != 200:
+        print("[!]加载javstore搜索页面出错")
+        return ""
+    data = etree.HTML(p_html.text)
+    node_list = data.xpath('/html/body/main/div/div/div[2]//a')
+    return_list = []
+    if len(node_list) == 0:
+        print("[!]无搜索结果，未找到JAVstore预览图！")
+        return ""
+    else:
+        print("[!]搜索结果数量: "+str(len(node_list)))
+    cnt = 0
+    for ele in node_list:
+        tmp = etree.tostring(ele).decode()
+        if num not in tmp:
+            if cnt < 6:
+                print("[!]搜索结果不匹配，未找到JAVstore预览图！")
+            break
+        cnt += 1
+        p_url = ele.xpath('./@href')[0]
+        if p_url.startswith('/'):
+            p_url = url_pre + p_url[1:]
+        return_list.append(p_url)
+        if cnt == 6:
+            break
+    return return_list
 
 def findDetailURLFromJAVStore(number):
     num = getTrueNum(number)
@@ -1237,16 +1268,19 @@ def getPreviewImageUrlFromJAVStoreDetailURL(url):
     
     data = etree.HTML(i_html.text)
     url_list = data.xpath('/html/body/div[1]/div[2]/div[1]/div[2]/div[2]/a[1]/img/@src')
-    if len(url_list) ==0 :
-        url_list = data.xpath('/html/body/div[1]/div[2]/div[1]/div[2]/div[2]/a[1]/@href')
+    if len(url_list) == 0:
+        url_list = data.xpath('/html/body/main/div/div/article/div//a/@href')
         if len(url_list)== 0:
             print("[!]未找到JAVStore图片!")
             return []
     rep_list = []
     for url in url_list:
+        if "image" not in url:
+            continue
         url = url.replace('.th', '').replace('.md', '')
         print(url)
         rep_list.append(url)
+        break
     #详情页缩略图用最前面的
     return rep_list[:1] 
 
@@ -1270,6 +1304,14 @@ def imageUrlFromJAVStore(number):
         javstore_detail_info_page_url = findDetailURLFromJAVStore(number)
         if javstore_detail_info_page_url != "":
             javstore_preview_url = getPreviewImageUrlFromJAVStoreDetailURL(javstore_detail_info_page_url)
+        else:
+            print("[!]旧版匹配JAVStore详细信息页面方法失败，尝试新版方法!")
+            javstore_detail_info_page_url_list = findNewDetailURLListFromJAVStore(number)
+            if len(javstore_detail_info_page_url_list) != 0:
+                for url in javstore_detail_info_page_url_list:
+                    javstore_preview_url = getPreviewImageUrlFromJAVStoreDetailURL(url)
+                    if len(javstore_preview_url) != 0:
+                        break
     return javstore_preview_url
 
 def getPreImgByOrder(number):
