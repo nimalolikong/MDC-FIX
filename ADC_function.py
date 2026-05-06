@@ -37,9 +37,10 @@ def get_html(url, cookies: dict = None, ua: str = None, return_type: str = None,
     """
     verify = config.getInstance().cacert_file()
     config_proxy = config.getInstance().proxy()
+    session = requests.Session()
     errors = ""
 
-    headers = {"User-Agent": ua or G_USER_AGENT}  # noqa
+    headers = {"User-Agent": ua or G_USER_AGENT, "Referer": url}  # noqa
     if json_headers is not None:
         headers.update(json_headers)
 
@@ -47,17 +48,18 @@ def get_html(url, cookies: dict = None, ua: str = None, return_type: str = None,
         try:
             if config_proxy.enable:
                 proxies = config_proxy.proxies()
-                result = requests.get(str(url), headers=headers, timeout=config_proxy.timeout, proxies=proxies,
-                                      verify=False,
-                                      cookies=cookies)
+                result = session.get(str(url), headers=headers, timeout=config_proxy.timeout, proxies=proxies,
+                                        verify=False,
+                                        cookies=cookies)
             else:
-                result = requests.get(str(url), headers=headers, timeout=config_proxy.timeout, cookies=cookies)
+                result = session.get(str(url), headers=headers, timeout=config_proxy.timeout, cookies=cookies)
 
             if return_type == "object":
                 return result
             elif return_type == "content":
                 if result.headers.get('Content-Length') != result.content.__len__().__str__():
                     print("[-]Warning: Content-Length mismatch!")
+                    time.sleep(1)
                     continue
                 else:
                     return result.content
