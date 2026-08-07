@@ -591,6 +591,10 @@ class Fanza(Parser):
             return ''
         
         title= str(re.sub("\【.*?\】","",result[0]))
+        title= str(re.sub("\s*オリジナル.*付","",title))
+        if title.startswith("OVA"):
+            if len(title) > 3 and title[3] != ' ':
+                title = title[:3] + ' '+ title[3:]
         if "（ブルーレイディスク）" in title:#不想要蓝光标识和后面的内容
             index = title.find("（")
             title = title[:index]
