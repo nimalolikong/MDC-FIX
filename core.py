@@ -16,6 +16,8 @@ from ImageProcessing import cutImage
 headers = {"User-Agent":G_USER_AGENT}  # noqa
 pic_headers = {"User-Agent":G_USER_AGENT,"referer":"https://pixhost.to/"}
 
+MEMOJAV_DEV_COUNT = 6
+
 
 # from WebCrawler import get_data_from_json
 
@@ -1162,7 +1164,7 @@ def findPreviewImagesFromMemoJav(number):
     处理-cd后缀 使用memojav替换blogjav元
     '''
     num = getTrueNum(number)
-    url = f'https://image.memojav.com/image/screenshot/{num}.jpg'
+    url = f'https://memojav.org/image/screenshot/{num}.jpg'
     if get_html_status(url):
         return url
     else:
@@ -1171,7 +1173,7 @@ def findPreviewImagesFromMemoJav(number):
 
 def findPreviewImagesFromJAVStore(number):
     '''
-    处理-cd后缀 待增加memojav替换blogjav
+    处理-cd后缀 在javstore搜索番号，返回详情页url
     '''
     num = getTrueNum(number)
     url = f'https://img.javstore.net/search/images/?q="{num}"'
@@ -1217,15 +1219,16 @@ def findNewDetailURLListFromJAVStore(number):
     for ele in node_list:
         tmp = etree.tostring(ele).decode()
         if num not in tmp:
-            if cnt < 6:
-                print("[!]搜索结果不匹配，未找到JAVstore预览图！")
+            if cnt < MEMOJAV_DEV_COUNT:
+                print("搜索到了" + str(cnt) + "个结果，小于" + str(MEMOJAV_DEV_COUNT) + "，提前结束")
             break
         cnt += 1
         p_url = ele.xpath('./@href')[0]
         if p_url.startswith('/'):
             p_url = url_pre + p_url[1:]
         return_list.append(p_url)
-        if cnt == 6:
+        if cnt >= MEMOJAV_DEV_COUNT:
+            print("成功搜索到了" + str(cnt) + "个结果！")
             break
     return return_list
 
