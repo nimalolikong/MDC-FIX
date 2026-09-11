@@ -1220,7 +1220,7 @@ def findNewDetailURLListFromJAVStore(number):
         tmp = etree.tostring(ele).decode()
         if num not in tmp:
             if cnt < MEMOJAV_DEV_COUNT:
-                print("搜索到了" + str(cnt) + "个结果，小于" + str(MEMOJAV_DEV_COUNT) + "，提前结束")
+                print("[!]搜索到了" + str(cnt) + "个结果，小于" + str(MEMOJAV_DEV_COUNT) + "，提前结束")
             break
         cnt += 1
         p_url = ele.xpath('./@href')[0]
@@ -1228,7 +1228,7 @@ def findNewDetailURLListFromJAVStore(number):
             p_url = url_pre + p_url[1:]
         return_list.append(p_url)
         if cnt >= MEMOJAV_DEV_COUNT:
-            print("成功搜索到了" + str(cnt) + "个结果！")
+            print("[!]成功搜索到了" + str(cnt) + "个结果！")
             break
     return return_list
 
@@ -1281,7 +1281,7 @@ def getPreviewImageUrlFromJAVStoreDetailURL(url):
         if "image" not in url:
             continue
         url = url.replace('.th', '').replace('.md', '')
-        print(url)
+        print("[!]JAVStore Image:", url)
         rep_list.append(url)
         break
     #详情页缩略图用最前面的
@@ -1312,8 +1312,10 @@ def imageUrlFromJAVStore(number):
             javstore_detail_info_page_url_list = findNewDetailURLListFromJAVStore(number)
             if len(javstore_detail_info_page_url_list) != 0:
                 for url in javstore_detail_info_page_url_list:
+                    print("[!]尝试搜索结果: " + url)
                     javstore_preview_url = getPreviewImageUrlFromJAVStoreDetailURL(url)
                     if len(javstore_preview_url) != 0:
+                        print("[+]成功获取JAVStore图片！")
                         break
     return javstore_preview_url
 
